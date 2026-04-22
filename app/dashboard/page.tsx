@@ -12,8 +12,8 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("*, tenants(id, name, type, slug, primary_color)")
-    .eq("auth_id", user.id)
+    .select("*, tenants(id, name, type, slug, primaryColor)")
+    .eq("authId", user.id)
     .single();
 
   return <DashboardClient user={user} profile={profile} />;

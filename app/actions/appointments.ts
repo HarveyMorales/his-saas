@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserProfile } from "./auth";
-import type { InsertTables, UpdateTables } from "@/lib/supabase/types";
 import type { AppointmentStatus } from "@/lib/supabase/types";
 
 export async function getAppointments(date?: string) {
@@ -12,32 +11,42 @@ export async function getAppointments(date?: string) {
 
   let query = supabase
     .from("appointments")
-    .select(`
-      *,
-      patients(first_name, last_name, dni),
-      users!appointments_doctor_id_fkey(first_name, last_name, specialty)
-    `)
-    .eq("tenant_id", profile.tenant_id)
-    .order("scheduled_at");
+    .select("*")
+    .eq("tenantId", (profile as any).tenantId)
+    .order("scheduledAt");
 
   if (date) {
     const start = `${date}T00:00:00`;
     const end = `${date}T23:59:59`;
-    query = query.gte("scheduled_at", start).lte("scheduled_at", end);
+    query = query.gte("scheduledAt", start).lte("scheduledAt", end);
   }
 
   const { data, error } = await query;
   return { data, error: error?.message ?? null };
 }
 
-export async function createAppointment(payload: InsertTables<"appointments">) {
+export async function createAppointment(payload: {
+  patientId: string;
+  doctorId: string;
+  scheduledAt: string;
+  durationMin?: number;
+  specialtyId?: string | null;
+  chiefComplaint?: string | null;
+  notes?: string | null;
+  insurancePlanId?: string | null;
+}) {
   const supabase = await createClient();
   const profile = await getCurrentUserProfile();
   if (!profile) return { error: "No autenticado" };
 
   const { data, error } = await supabase
     .from("appointments")
-    .insert({ ...payload, tenant_id: profile.tenant_id })
+    .insert({
+      ...payload,
+      tenantId: (profile as any).tenantId,
+      status: "SCHEDULED",
+      updatedAt: new Date().toISOString(),
+    })
     .select()
     .single();
 
@@ -47,15 +56,15 @@ export async function createAppointment(payload: InsertTables<"appointments">) {
 export async function updateAppointmentStatus(id: string, status: AppointmentStatus, cancelReason?: string) {
   const supabase = await createClient();
 
-  const update: UpdateTables<"appointments"> = { status };
+  const update: any = { status, updatedAt: new Date().toISOString() };
   if (status === "CANCELLED") {
-    update.cancelled_at = new Date().toISOString();
-    if (cancelReason) update.cancel_reason = cancelReason;
+    update.cancelledAt = new Date().toISOString();
+    if (cancelReason) update.cancelReason = cancelReason;
   }
 
   const { data, error } = await supabase
     .from("appointments")
-    .update(update)
+    .update(update as any)
     .eq("id", id)
     .select()
     .single();

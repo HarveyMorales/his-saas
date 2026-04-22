@@ -42,8 +42,8 @@ export async function getCurrentUserProfile() {
 
   const { data, error } = await supabase
     .from("users")
-    .select("*, tenants(id, name, type, slug, primary_color)")
-    .eq("auth_id", user.id)
+    .select("*, tenants(id, name, type, slug, primaryColor)")
+    .eq("authId", user.id)
     .single();
 
   if (error || !data) return null;
@@ -62,9 +62,9 @@ export async function signUp(formData: FormData) {
     return { error: "Todos los campos son requeridos" };
   }
 
-  const admin = createAdminClient();
+  const adminClient = createAdminClient();
 
-  const { data: authData, error: authError } = await admin.auth.admin.createUser({
+  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
@@ -74,23 +74,24 @@ export async function signUp(formData: FormData) {
     return { error: authError?.message ?? "Error al crear usuario" };
   }
 
-  const { error: profileError } = await admin.from("users").insert({
-    auth_id: authData.user.id,
-    tenant_id: tenantId,
+  const { error: profileError } = await adminClient.from("users").insert({
+    authId: authData.user.id,
+    tenantId,
     role: role as any,
-    first_name: firstName,
-    last_name: lastName,
+    firstName,
+    lastName,
     email,
     phone: null,
-    avatar_url: null,
+    avatarUrl: null,
     specialty: null,
-    license_num: null,
-    is_active: true,
-    last_login_at: null,
+    licenseNum: null,
+    isActive: true,
+    lastLoginAt: null,
+    updatedAt: new Date().toISOString(),
   });
 
   if (profileError) {
-    await admin.auth.admin.deleteUser(authData.user.id);
+    await adminClient.auth.admin.deleteUser(authData.user.id);
     return { error: "Error al crear perfil de usuario" };
   }
 

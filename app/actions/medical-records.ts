@@ -2,29 +2,45 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserProfile } from "./auth";
-import type { InsertTables } from "@/lib/supabase/types";
 
 export async function getMedicalRecords(patientId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("medical_records")
-    .select(`
-      *,
-      users!medical_records_author_id_fkey(first_name, last_name, specialty)
-    `)
-    .eq("patient_id", patientId)
-    .order("created_at", { ascending: false });
+    .select("*")
+    .eq("patientId", patientId)
+    .order("createdAt", { ascending: false });
 
   return { data, error: error?.message ?? null };
 }
 
-export async function createMedicalRecord(payload: Omit<InsertTables<"medical_records">, "tenant_id" | "author_id">) {
+export async function createMedicalRecord(payload: {
+  patientId: string;
+  appointmentId?: string | null;
+  specialtyId?: string | null;
+  entryType?: string;
+  subjective?: string | null;
+  objective?: string | null;
+  assessment?: string | null;
+  plan?: string | null;
+  diagnosisCie10?: string | null;
+  diagnosisFreeText?: string | null;
+  treatment?: string | null;
+  vitalsBpSystolic?: number | null;
+  vitalsBpDiastolic?: number | null;
+  vitalsHrBpm?: number | null;
+  vitalsTempC?: number | null;
+  vitalsWeightKg?: number | null;
+  vitalsHeightCm?: number | null;
+  isConfidential?: boolean;
+}) {
   const supabase = await createClient();
   const profile = await getCurrentUserProfile();
   if (!profile) return { error: "No autenticado" };
 
-  if (profile.role !== "MEDICO" && profile.role !== "TENANT_ADMIN" && profile.role !== "SUPER_ADMIN") {
+  const p = profile as any;
+  if (p.role !== "MEDICO" && p.role !== "TENANT_ADMIN" && p.role !== "SUPER_ADMIN") {
     return { error: "Sin permisos para crear registros médicos" };
   }
 
@@ -32,9 +48,11 @@ export async function createMedicalRecord(payload: Omit<InsertTables<"medical_re
     .from("medical_records")
     .insert({
       ...payload,
-      tenant_id: profile.tenant_id,
-      author_id: profile.id,
+      tenantId: p.tenantId,
+      authorId: p.id,
       version: 1,
+      isConfidential: payload.isConfidential ?? false,
+      updatedAt: new Date().toISOString(),
     })
     .select()
     .single();
@@ -42,10 +60,7 @@ export async function createMedicalRecord(payload: Omit<InsertTables<"medical_re
   return { data, error: error?.message ?? null };
 }
 
-export async function updateMedicalRecord(
-  id: string,
-  payload: Partial<InsertTables<"medical_records">>
-) {
+export async function updateMedicalRecord(id: string, payload: Record<string, unknown>) {
   const supabase = await createClient();
 
   const { data: existing } = await supabase
@@ -56,7 +71,11 @@ export async function updateMedicalRecord(
 
   const { data, error } = await supabase
     .from("medical_records")
-    .update({ ...payload, version: (existing?.version ?? 1) + 1 })
+    .update({
+      ...payload,
+      version: ((existing as any)?.version ?? 1) + 1,
+      updatedAt: new Date().toISOString(),
+    })
     .eq("id", id)
     .select()
     .single();
