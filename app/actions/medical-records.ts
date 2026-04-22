@@ -1,12 +1,12 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUserProfile } from "./auth";
+import { getAuthContext } from "./_helpers";
 
 export async function getMedicalRecords(patientId: string) {
-  const supabase = await createClient();
+  const ctx = await getAuthContext();
+  if (!ctx) return { data: null, error: "No autenticado" };
 
-  const { data, error } = await supabase
+  const { data, error } = await ctx.db
     .from("medical_records")
     .select("*")
     .eq("patientId", patientId)
@@ -35,16 +35,15 @@ export async function createMedicalRecord(payload: {
   vitalsHeightCm?: number | null;
   isConfidential?: boolean;
 }) {
-  const supabase = await createClient();
-  const profile = await getCurrentUserProfile();
-  if (!profile) return { error: "No autenticado" };
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "No autenticado" };
 
-  const p = profile as any;
+  const p = ctx.profile as any;
   if (p.role !== "MEDICO" && p.role !== "TENANT_ADMIN" && p.role !== "SUPER_ADMIN") {
     return { error: "Sin permisos para crear registros médicos" };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await ctx.db
     .from("medical_records")
     .insert({
       ...payload,
@@ -61,15 +60,16 @@ export async function createMedicalRecord(payload: {
 }
 
 export async function updateMedicalRecord(id: string, payload: Record<string, unknown>) {
-  const supabase = await createClient();
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "No autenticado" };
 
-  const { data: existing } = await supabase
+  const { data: existing } = await ctx.db
     .from("medical_records")
     .select("version")
     .eq("id", id)
     .single();
 
-  const { data, error } = await supabase
+  const { data, error } = await ctx.db
     .from("medical_records")
     .update({
       ...payload,

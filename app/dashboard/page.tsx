@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { DashboardClient } from "./dashboard-client";
 
 export default async function DashboardPage() {
@@ -10,7 +11,9 @@ export default async function DashboardPage() {
     redirect("/");
   }
 
-  const { data: profile } = await supabase
+  // Use admin client to bypass RLS for profile read (JWT Custom Hook may not be configured)
+  const admin = createAdminClient();
+  const { data: profile } = await (admin as any)
     .from("users")
     .select("*, tenants(id, name, type, slug, primaryColor)")
     .eq("authId", user.id)

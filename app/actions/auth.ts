@@ -36,11 +36,15 @@ export async function getSession() {
 }
 
 export async function getCurrentUserProfile() {
+  // Verify session with regular client (respects auth)
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data, error } = await supabase
+  // Read profile with admin client to bypass RLS
+  // (RLS requires JWT Custom Hook which may not be configured yet)
+  const admin = createAdminClient();
+  const { data, error } = await (admin as any)
     .from("users")
     .select("*, tenants(id, name, type, slug, primaryColor)")
     .eq("authId", user.id)

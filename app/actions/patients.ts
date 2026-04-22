@@ -1,17 +1,15 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUserProfile } from "./auth";
+import { getAuthContext } from "./_helpers";
 
 export async function getPatients(search?: string) {
-  const supabase = await createClient();
-  const profile = await getCurrentUserProfile();
-  if (!profile) return { data: null, error: "No autenticado" };
+  const ctx = await getAuthContext();
+  if (!ctx) return { data: null, error: "No autenticado" };
 
-  let query = supabase
+  let query = ctx.db
     .from("patients")
     .select("*")
-    .eq("tenantId", (profile as any).tenantId)
+    .eq("tenantId", ctx.profile.tenantId)
     .eq("isActive", true)
     .order("lastName");
 
@@ -24,9 +22,10 @@ export async function getPatients(search?: string) {
 }
 
 export async function getPatient(id: string) {
-  const supabase = await createClient();
+  const ctx = await getAuthContext();
+  if (!ctx) return { data: null, error: "No autenticado" };
 
-  const { data, error } = await supabase
+  const { data, error } = await ctx.db
     .from("patients")
     .select("*")
     .eq("id", id)
@@ -52,15 +51,14 @@ export async function createPatient(payload: {
   emergencyContact?: string | null;
   emergencyPhone?: string | null;
 }) {
-  const supabase = await createClient();
-  const profile = await getCurrentUserProfile();
-  if (!profile) return { error: "No autenticado" };
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "No autenticado" };
 
-  const { data, error } = await supabase
+  const { data, error } = await ctx.db
     .from("patients")
     .insert({
       ...payload,
-      tenantId: (profile as any).tenantId,
+      tenantId: ctx.profile.tenantId,
       isActive: true,
       updatedAt: new Date().toISOString(),
     })
@@ -71,9 +69,10 @@ export async function createPatient(payload: {
 }
 
 export async function updatePatient(id: string, payload: Record<string, unknown>) {
-  const supabase = await createClient();
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "No autenticado" };
 
-  const { data, error } = await supabase
+  const { data, error } = await ctx.db
     .from("patients")
     .update({ ...payload, updatedAt: new Date().toISOString() })
     .eq("id", id)

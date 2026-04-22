@@ -1,18 +1,16 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUserProfile } from "./auth";
+import { getAuthContext } from "./_helpers";
 import type { AppointmentStatus } from "@/lib/supabase/types";
 
 export async function getAppointments(date?: string) {
-  const supabase = await createClient();
-  const profile = await getCurrentUserProfile();
-  if (!profile) return { data: null, error: "No autenticado" };
+  const ctx = await getAuthContext();
+  if (!ctx) return { data: null, error: "No autenticado" };
 
-  let query = supabase
+  let query = ctx.db
     .from("appointments")
     .select("*")
-    .eq("tenantId", (profile as any).tenantId)
+    .eq("tenantId", ctx.profile.tenantId)
     .order("scheduledAt");
 
   if (date) {
@@ -35,15 +33,14 @@ export async function createAppointment(payload: {
   notes?: string | null;
   insurancePlanId?: string | null;
 }) {
-  const supabase = await createClient();
-  const profile = await getCurrentUserProfile();
-  if (!profile) return { error: "No autenticado" };
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "No autenticado" };
 
-  const { data, error } = await supabase
+  const { data, error } = await ctx.db
     .from("appointments")
     .insert({
       ...payload,
-      tenantId: (profile as any).tenantId,
+      tenantId: ctx.profile.tenantId,
       status: "SCHEDULED",
       updatedAt: new Date().toISOString(),
     })
@@ -54,7 +51,8 @@ export async function createAppointment(payload: {
 }
 
 export async function updateAppointmentStatus(id: string, status: AppointmentStatus, cancelReason?: string) {
-  const supabase = await createClient();
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "No autenticado" };
 
   const update: any = { status, updatedAt: new Date().toISOString() };
   if (status === "CANCELLED") {
@@ -62,9 +60,9 @@ export async function updateAppointmentStatus(id: string, status: AppointmentSta
     if (cancelReason) update.cancelReason = cancelReason;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await ctx.db
     .from("appointments")
-    .update(update as any)
+    .update(update)
     .eq("id", id)
     .select()
     .single();
