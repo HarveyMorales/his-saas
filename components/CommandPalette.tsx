@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { PATIENTS, APPOINTMENTS } from "@/lib/data";
 import type { NavId } from "@/lib/types";
 import { Search, User, Calendar, FileText, LayoutDashboard, Users, Shield, Receipt, ChevronRight } from "lucide-react";
+import { useCurrentUser } from "@/lib/hooks/useSupabase";
+import { createClient } from "@/lib/supabase/client";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -36,8 +38,28 @@ const NAV_SHORTCUTS: { id: NavId; label: string; sub: string; icon: React.ReactN
 export function CommandPalette({ open, onClose, onNav, onSelectPatient }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
+  const [dbPatients, setDbPatients] = useState<any[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const { profile } = useCurrentUser();
+  const tenantId = (profile as any)?.tenantId ?? null;
+  const supabase = createClient();
+
+  // Debounced live patient search
+  useEffect(() => {
+    if (!tenantId || !query.trim()) { setDbPatients([]); return; }
+    const timer = setTimeout(async () => {
+      const q = query.trim();
+      const { data } = await (supabase as any)
+        .from("patients")
+        .select("id, firstName, lastName, dni, birthDate, sex")
+        .eq("tenantId", tenantId)
+        .or(`lastName.ilike.%${q}%,firstName.ilike.%${q}%,dni.ilike.%${q}%`)
+        .limit(5);
+      setDbPatients(data ?? []);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [query, tenantId]);
 
   const results: Result[] = (() => {
     const q = query.toLowerCase().trim();
@@ -53,17 +75,27 @@ export function CommandPalette({ open, onClose, onNav, onSelectPatient }: Comman
       }));
     }
 
-    const patientResults: Result[] = PATIENTS
-      .filter(p => p.name.toLowerCase().includes(q) || p.dni.includes(q))
-      .slice(0, 4)
-      .map(p => ({
-        id: p.id,
-        type: "patient" as ResultType,
-        label: p.name,
-        sub: `DNI ${p.dni} · ${p.age} años · ${p.obra}`,
-        icon: <User size={14} />,
-        action: () => { onSelectPatient(p.id); onClose(); },
-      }));
+    const patientResults: Result[] = tenantId
+      ? dbPatients.map(p => {
+          const birthYear = p.birthDate ? new Date(p.birthDate).getFullYear() : null;
+          const age = birthYear ? new Date().getFullYear() - birthYear : null;
+          return {
+            id: p.id,
+            type: "patient" as ResultType,
+            label: `${p.lastName}, ${p.firstName}`,
+            sub: `DNI ${p.dni}${age ? ` · ${age} años` : ""}`,
+            icon: <User size={14} />,
+            action: () => { onSelectPatient(p.id); onClose(); },
+          };
+        })
+      : PATIENTS.filter(p => p.name.toLowerCase().includes(q) || p.dni.includes(q)).slice(0, 4).map(p => ({
+          id: p.id,
+          type: "patient" as ResultType,
+          label: p.name,
+          sub: `DNI ${p.dni} · ${p.age} años · ${p.obra}`,
+          icon: <User size={14} />,
+          action: () => { onSelectPatient(p.id); onClose(); },
+        }));
 
     const apptResults: Result[] = APPOINTMENTS
       .filter(a => a.patient.toLowerCase().includes(q) || a.doctor.toLowerCase().includes(q))

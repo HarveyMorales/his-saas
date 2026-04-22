@@ -124,9 +124,31 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
     setSelectedPatient(null);
   };
 
-  const handleSelectPatientById = (patientId: string) => {
-    const p = PATIENTS.find(pt => pt.id === patientId);
-    if (p) { setSelectedPatient(p); setActiveNav("patients"); }
+  const handleSelectPatientById = async (patientId: string) => {
+    // Try mock first
+    const mockPatient = PATIENTS.find(pt => pt.id === patientId);
+    if (mockPatient) { setSelectedPatient(mockPatient); setActiveNav("patients"); return; }
+    // Fetch from Supabase for real DB patients
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data } = await (supabase as any).from("patients").select("*").eq("id", patientId).single();
+      if (data) {
+        const birthYear = data.birthDate ? new Date(data.birthDate).getFullYear() : null;
+        const age = birthYear ? new Date().getFullYear() - birthYear : 0;
+        setSelectedPatient({
+          id: data.id, dni: data.dni,
+          name: `${data.lastName}, ${data.firstName}`,
+          age, sex: data.sex ?? "M",
+          obra: "Sin obra social", blood: data.bloodType ?? "—",
+          phone: data.phone ?? "", email: data.email ?? "",
+          alert: data.allergies ? `🔴 Alergia: ${data.allergies}` : null,
+          lastVisit: data.updatedAt ? new Date(data.updatedAt).toLocaleDateString("es-AR") : "—",
+          institution: data.tenantId,
+        });
+        setActiveNav("patients");
+      }
+    } catch {}
   };
 
   // ── Login ────────────────────────────────────────────────────────────────────
