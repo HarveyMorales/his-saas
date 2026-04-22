@@ -40,30 +40,9 @@ export function LoginView({ onLogin }: LoginViewProps) {
       });
 
       if (!authError) {
-        // Get user profile to determine role/institution
-        const { data: profile } = await supabase
-          .from("users")
-          .select("*, tenants(id, name, type, slug, primaryColor)")
-          .eq("authId", (await supabase.auth.getUser()).data.user?.id ?? "")
-          .single();
-
-        if (profile) {
-          const tenant = (profile as any).tenants;
-          const loginUser: LoginUser = {
-            id: profile.id,
-            email: profile.email,
-            password: "",
-            name: `${profile.firstName} ${profile.lastName}`,
-            role: profile.role as LoginUser["role"],
-            avatar: `${profile.firstName[0]}${profile.lastName[0]}`,
-            institution: tenant?.id ?? null,
-            institutionName: tenant?.name ?? null,
-            specialty: profile.specialty ?? undefined,
-          };
-          setLoading(false);
-          onLogin(loginUser);
-          return;
-        }
+        // Redirect to dashboard — middleware will verify session server-side
+        window.location.href = "/dashboard";
+        return;
       }
     } catch {
       // Supabase not configured — fall through to mock
