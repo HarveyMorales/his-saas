@@ -151,6 +151,27 @@ export function useAuditLogs(tenantId: string | null, limit = 50) {
   return { logs, loading };
 }
 
+// ── Share requests hook ─────────────────────────────────────────
+export function useShareRequests(tenantId: string | null) {
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetch = useCallback(async () => {
+    if (!tenantId) return;
+    setLoading(true);
+    const { data } = await (supabase as any)
+      .from("share_requests")
+      .select("*, patients(firstName, lastName, dni)")
+      .or(`fromTenantId.eq.${tenantId},toTenantId.eq.${tenantId}`)
+      .order("createdAt", { ascending: false });
+    setRequests(data ?? []);
+    setLoading(false);
+  }, [tenantId]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+  return { requests, loading, refetch: fetch };
+}
+
 // ── Billing items hook ──────────────────────────────────────────
 export function useBillingItems(tenantId: string | null) {
   const [items, setItems] = useState<Tables<"billing_items">[]>([]);

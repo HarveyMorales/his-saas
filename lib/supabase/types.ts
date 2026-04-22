@@ -292,6 +292,44 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["billing_items"]["Insert"]>;
         Relationships: [];
       };
+      share_requests: {
+        Row: {
+          id: string;
+          fromTenantId: string;
+          toTenantId: string;
+          patientId: string;
+          recordId: string | null;
+          requestedById: string;
+          reason: string;
+          status: ShareStatus;
+          expiresAt: string | null;
+          approvedAt: string | null;
+          approvedById: string | null;
+          revokedAt: string | null;
+          revokedById: string | null;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          fromTenantId: string;
+          toTenantId: string;
+          patientId: string;
+          recordId?: string | null;
+          requestedById: string;
+          reason: string;
+          status?: ShareStatus;
+          expiresAt?: string | null;
+          approvedAt?: string | null;
+          approvedById?: string | null;
+          revokedAt?: string | null;
+          revokedById?: string | null;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["share_requests"]["Insert"]>;
+        Relationships: [];
+      };
       audit_logs: {
         Row: {
           id: string;
