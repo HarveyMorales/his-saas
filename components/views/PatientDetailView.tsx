@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/Badge";
 import { VitalsTrendChart } from "@/components/ui/VitalsTrendChart";
 import { RECORDS, APPOINTMENTS, BILLING } from "@/lib/data";
 import { getSpecialtyColor } from "@/lib/utils";
-import type { Patient, NavId } from "@/lib/types";
+import { useMedicalRecords } from "@/lib/hooks/useSupabase";
+import type { Patient, NavId, MedicalRecord } from "@/lib/types";
 
 interface PatientDetailViewProps {
   patient: Patient;
@@ -38,11 +39,38 @@ function VitalPill({ label, value }: { label: string; value: string }) {
   );
 }
 
+function toMedicalRecord(r: any): MedicalRecord {
+  const date = r.createdAt ? new Date(r.createdAt).toLocaleDateString("es-AR") : "—";
+  const bp = r.vitalsBpSystolic && r.vitalsBpDiastolic ? `${r.vitalsBpSystolic}/${r.vitalsBpDiastolic}` : undefined;
+  return {
+    id: r.id,
+    date,
+    doctor: r.authorName ?? "—",
+    specialty: r.specialtyName ?? r.entryType ?? "Consulta",
+    diagnosis: r.diagnosisFreeText ?? r.assessment ?? "—",
+    treatment: r.plan ?? r.treatment ?? "—",
+    notes: r.subjective ?? r.objective ?? undefined,
+    version: r.version ?? 1,
+    confidential: r.isConfidential ?? false,
+    vitals: {
+      bp,
+      hr: r.vitalsHrBpm ? `${r.vitalsHrBpm} bpm` : undefined,
+      temp: r.vitalsTempC ? `${r.vitalsTempC}°C` : undefined,
+      weight: r.vitalsWeightKg ? `${r.vitalsWeightKg} kg` : undefined,
+    },
+  };
+}
+
 export function PatientDetailView({ patient, onBack, onNav, onNewConsultation }: PatientDetailViewProps) {
   const [activeTab, setActiveTab] = useState<Tab>("hc");
-  const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({ r001: true, r005: true, r006: true });
+  const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
 
-  const records = RECORDS[patient.id] ?? [];
+  const { records: dbRecords, loading: recordsLoading } = useMedicalRecords(patient.id);
+  const mockRecords = RECORDS[patient.id] ?? [];
+  const records: MedicalRecord[] = dbRecords.length > 0
+    ? dbRecords.map(toMedicalRecord)
+    : mockRecords;
+
   const appts = APPOINTMENTS.filter(a => a.patientId === patient.id);
   const bills = BILLING.filter(b => b.patient === patient.name);
 

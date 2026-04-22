@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { useToast } from "@/lib/toast-context";
+import { createPatient } from "@/app/actions/patients";
 
 interface NewPatientModalProps {
   onClose: () => void;
@@ -52,14 +53,31 @@ export function NewPatientModal({ onClose, onSaved }: NewPatientModalProps) {
 
   const canSave = form.firstName && form.lastName && form.dni;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+    const { error } = await createPatient({
+      firstName: form.firstName,
+      lastName: form.lastName,
+      dni: form.dni,
+      cuil: form.cuil || null,
+      birthDate: form.birthDate || null,
+      sex: (form.sex as "M" | "F") || null,
+      email: form.email || null,
+      phone: form.phone || null,
+      address: form.address || null,
+      bloodType: form.blood || null,
+      allergies: form.allergies || null,
+      emergencyContact: form.emergencyContact || null,
+      emergencyPhone: form.emergencyPhone || null,
+    });
+    setSaving(false);
+    if (error) {
+      toast({ type: "error", title: "Error al guardar", message: error });
+    } else {
       toast({ type: "success", title: "Paciente creado", message: `${form.lastName}, ${form.firstName} registrado exitosamente.` });
       onSaved?.();
       onClose();
-    }, 700);
+    }
   };
 
   return (

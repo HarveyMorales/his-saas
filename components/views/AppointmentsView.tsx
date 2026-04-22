@@ -1,47 +1,110 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Play, CheckCircle, XCircle, Eye } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Plus, Play, CheckCircle, XCircle, Eye, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { NewAppointmentModal } from "@/components/modals/NewAppointmentModal";
 import { APPOINTMENTS } from "@/lib/data";
 import { useToast } from "@/lib/toast-context";
+import { useCurrentUser, useAppointments, useRealtimeAppointments } from "@/lib/hooks/useSupabase";
+import { updateAppointmentStatus } from "@/app/actions/appointments";
 import type { Appointment } from "@/lib/types";
 
 type ApptStatus = Appointment["status"];
 
-const STATUS_TRANSITIONS: Record<ApptStatus, { label: string; icon: React.ReactNode; next: ApptStatus; color: string } | null> = {
-  PENDIENTE:   { label: "Iniciar",    icon: <Play size={10} />,         next: "EN CURSO",   color: "var(--blue)" },
-  "EN CURSO":  { label: "Completar", icon: <CheckCircle size={10} />,  next: "CONFIRMADO", color: "var(--green)" },
+const STATUS_MAP: Record<string, ApptStatus> = {
+  SCHEDULED: "PENDIENTE",
+  IN_PROGRESS: "EN CURSO",
+  COMPLETED: "CONFIRMADO",
+  CANCELLED: "CANCELADO",
+};
+
+const STATUS_NEXT: Record<string, string> = {
+  SCHEDULED: "IN_PROGRESS",
+  IN_PROGRESS: "COMPLETED",
+};
+
+const STATUS_TRANSITIONS: Record<ApptStatus, { label: string; icon: React.ReactNode; color: string } | null> = {
+  PENDIENTE:   { label: "Iniciar",    icon: <Play size={10} />,         color: "var(--blue)" },
+  "EN CURSO":  { label: "Completar", icon: <CheckCircle size={10} />,  color: "var(--green)" },
   CONFIRMADO:  null,
   CANCELADO:   null,
 };
 
+function toAppointment(a: any): Appointment & { _dbStatus: string } {
+  const dt = a.scheduledAt ? new Date(a.scheduledAt) : null;
+  const time = dt ? dt.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—";
+  const patientName = a.patients ? `${a.patients.lastName}, ${a.patients.firstName}` : "—";
+  const doctorName = a.users ? `${a.users.firstName} ${a.users.lastName}` : "—";
+  const specialty = a.users?.specialty ?? "—";
+  return {
+    id: a.id,
+    time,
+    patient: patientName,
+    patientId: a.patientId,
+    doctor: doctorName,
+    specialty,
+    status: STATUS_MAP[a.status] ?? "PENDIENTE",
+    obra: "Particular",
+    duration: a.durationMin ?? 30,
+    _dbStatus: a.status,
+  };
+}
+
 export function AppointmentsView() {
   const { toast } = useToast();
-  const [appts, setAppts] = useState<Appointment[]>(APPOINTMENTS);
+  const { profile, loading: profileLoading } = useCurrentUser();
+  const tenantId = (profile as any)?.tenantId ?? null;
+  const today = new Date().toISOString().split("T")[0];
+  const { appointments: dbAppts, loading: apptLoading, refetch } = useAppointments(tenantId, today);
   const [newOpen, setNewOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const isLive = !!tenantId;
+
+  const appts: (Appointment & { _dbStatus?: string })[] = isLive
+    ? dbAppts.map(toAppointment)
+    : APPOINTMENTS;
+
+  const loading = profileLoading || (isLive && apptLoading);
+
+  useRealtimeAppointments(tenantId, useCallback(() => { refetch(); }, [refetch]));
+
+  const advance = async (id: string) => {
+    const appt = appts.find(a => a.id === id);
+    if (!appt) return;
+    if (isLive) {
+      const dbStatus = (appt as any)._dbStatus ?? "SCHEDULED";
+      const nextStatus = STATUS_NEXT[dbStatus];
+      if (!nextStatus) return;
+      const { error } = await updateAppointmentStatus(id, nextStatus as any);
+      if (error) { toast({ type: "error", title: "Error", message: error }); return; }
+      await refetch();
+      const label = nextStatus === "IN_PROGRESS" ? "en curso" : "completado";
+      toast({ type: "success", title: `Turno ${label}`, message: appt.patient });
+    } else {
+      const trans = STATUS_TRANSITIONS[appt.status];
+      if (!trans) return;
+      toast({ type: "success", title: `Turno ${trans.label.toLowerCase()}`, message: appt.patient });
+    }
+  };
+
+  const cancel = async (id: string) => {
+    const appt = appts.find(a => a.id === id);
+    if (!appt) return;
+    if (isLive) {
+      const { error } = await updateAppointmentStatus(id, "CANCELLED");
+      if (error) { toast({ type: "error", title: "Error", message: error }); return; }
+      await refetch();
+    }
+    toast({ type: "warning", title: "Turno cancelado", message: appt.patient });
+  };
 
   const confirmed = appts.filter(a => a.status === "CONFIRMADO").length;
   const pending = appts.filter(a => a.status === "PENDIENTE").length;
   const inProgress = appts.filter(a => a.status === "EN CURSO").length;
   const cancelled = appts.filter(a => a.status === "CANCELADO").length;
-
-  const advance = (id: string) => {
-    const appt = appts.find(a => a.id === id);
-    const trans = appt ? STATUS_TRANSITIONS[appt.status] : null;
-    if (!trans) return;
-    setAppts(prev => prev.map(a => a.id === id ? { ...a, status: trans.next } : a));
-    toast({ type: "success", title: `Turno ${trans.next.toLowerCase()}`, message: appt!.patient });
-  };
-
-  const cancel = (id: string) => {
-    const appt = appts.find(a => a.id === id);
-    setAppts(prev => prev.map(a => a.id === id ? { ...a, status: "CANCELADO" } : a));
-    toast({ type: "warning", title: "Turno cancelado", message: appt?.patient ?? "" });
-  };
 
   const selected = appts.find(a => a.id === selectedId);
 
@@ -54,16 +117,31 @@ export function AppointmentsView() {
           <h1 style={{ margin: 0, fontFamily: "Georgia, serif", fontSize: 24, fontWeight: 700, color: "var(--navy)" }}>
             Agenda / Turnos
           </h1>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--slate-500)" }}>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--slate-500)", display: "flex", alignItems: "center", gap: 6 }}>
             {new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
+            {isLive && (
+              <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: "rgba(16,185,129,0.1)", color: "#059669" }}>
+                LIVE DB
+              </span>
+            )}
           </p>
         </div>
-        <button
-          onClick={() => setNewOpen(true)}
-          style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 18px", borderRadius: 8, background: "var(--teal)", color: "white", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700 }}
-        >
-          <Plus size={15} /> Nuevo turno
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          {isLive && (
+            <button
+              onClick={refetch}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, background: "white", color: "var(--slate-600)", border: "1px solid var(--slate-200)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+            >
+              <RefreshCw size={14} /> Actualizar
+            </button>
+          )}
+          <button
+            onClick={() => setNewOpen(true)}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 18px", borderRadius: 8, background: "var(--teal)", color: "white", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700 }}
+          >
+            <Plus size={15} /> Nuevo turno
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 260px", gap: 16 }}>
@@ -71,67 +149,84 @@ export function AppointmentsView() {
         <div style={{ background: "white", borderRadius: 14, border: "1px solid var(--slate-200)", overflow: "hidden" }}>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--slate-100)" }}>
             <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: "var(--navy)" }}>Turnos de Hoy</div>
-            <div style={{ fontSize: 12, color: "var(--slate-500)", marginTop: 2 }}>{appts.length} programados</div>
+            <div style={{ fontSize: 12, color: "var(--slate-500)", marginTop: 2 }}>
+              {loading ? "Cargando..." : `${appts.length} programados`}
+            </div>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: "var(--slate-50)" }}>
-                {["Hora", "Paciente", "Profesional", "Especialidad", "Obra Social", "Estado", "Acciones"].map(h => (
-                  <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--slate-500)", letterSpacing: 0.6, textTransform: "uppercase", borderBottom: "1px solid var(--slate-200)" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {appts.map((a, i) => {
-                const trans = STATUS_TRANSITIONS[a.status];
-                const isSelected = selectedId === a.id;
-                return (
-                  <tr
-                    key={a.id}
-                    style={{
-                      borderBottom: "1px solid var(--slate-100)",
-                      background: isSelected ? "rgba(0,191,166,0.04)" : a.status === "EN CURSO" ? "#EFF6FF" : "transparent",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => setSelectedId(isSelected ? null : a.id)}
-                  >
-                    <td style={{ padding: "10px 12px", fontFamily: "Georgia, serif", fontWeight: 700, color: "var(--navy)" }}>{a.time}</td>
-                    <td style={{ padding: "10px 12px", fontWeight: 600, color: "var(--slate-800)" }}>{a.patient}</td>
-                    <td style={{ padding: "10px 12px", color: "var(--slate-600)", fontSize: 12 }}>{a.doctor}</td>
-                    <td style={{ padding: "10px 12px", color: "var(--slate-500)", fontSize: 11 }}>{a.specialty}</td>
-                    <td style={{ padding: "10px 12px", color: "var(--slate-500)", fontSize: 11 }}>{a.obra}</td>
-                    <td style={{ padding: "10px 12px" }}><Badge status={a.status} /></td>
-                    <td style={{ padding: "10px 12px" }} onClick={e => e.stopPropagation()}>
-                      <div style={{ display: "flex", gap: 4 }}>
-                        {trans && (
+
+          {loading ? (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--slate-400)", fontSize: 13 }}>
+              Cargando turnos...
+            </div>
+          ) : appts.length === 0 ? (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--slate-400)" }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>📅</div>
+              <div>No hay turnos programados para hoy</div>
+              <button onClick={() => setNewOpen(true)} style={{ marginTop: 12, padding: "8px 20px", borderRadius: 8, background: "var(--teal)", color: "white", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                + Agregar turno
+              </button>
+            </div>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "var(--slate-50)" }}>
+                  {["Hora", "Paciente", "Profesional", "Especialidad", "Obra Social", "Estado", "Acciones"].map(h => (
+                    <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--slate-500)", letterSpacing: 0.6, textTransform: "uppercase", borderBottom: "1px solid var(--slate-200)" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {appts.map((a) => {
+                  const trans = STATUS_TRANSITIONS[a.status];
+                  const isSelected = selectedId === a.id;
+                  return (
+                    <tr
+                      key={a.id}
+                      style={{
+                        borderBottom: "1px solid var(--slate-100)",
+                        background: isSelected ? "rgba(0,191,166,0.04)" : a.status === "EN CURSO" ? "#EFF6FF" : "transparent",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => setSelectedId(isSelected ? null : a.id)}
+                    >
+                      <td style={{ padding: "10px 12px", fontFamily: "Georgia, serif", fontWeight: 700, color: "var(--navy)" }}>{a.time}</td>
+                      <td style={{ padding: "10px 12px", fontWeight: 600, color: "var(--slate-800)" }}>{a.patient}</td>
+                      <td style={{ padding: "10px 12px", color: "var(--slate-600)", fontSize: 12 }}>{a.doctor}</td>
+                      <td style={{ padding: "10px 12px", color: "var(--slate-500)", fontSize: 11 }}>{a.specialty}</td>
+                      <td style={{ padding: "10px 12px", color: "var(--slate-500)", fontSize: 11 }}>{a.obra}</td>
+                      <td style={{ padding: "10px 12px" }}><Badge status={a.status} /></td>
+                      <td style={{ padding: "10px 12px" }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          {trans && (
+                            <button
+                              onClick={() => advance(a.id)}
+                              style={{ display: "flex", alignItems: "center", gap: 3, padding: "4px 8px", borderRadius: 5, border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700, background: `${trans.color}15`, color: trans.color }}
+                            >
+                              {trans.icon} {trans.label}
+                            </button>
+                          )}
+                          {a.status !== "CANCELADO" && a.status !== "CONFIRMADO" && (
+                            <button
+                              onClick={() => cancel(a.id)}
+                              style={{ display: "flex", alignItems: "center", gap: 3, padding: "4px 8px", borderRadius: 5, border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(239,68,68,0.1)", color: "var(--red)" }}
+                            >
+                              <XCircle size={10} /> Cancelar
+                            </button>
+                          )}
                           <button
-                            onClick={() => advance(a.id)}
-                            style={{ display: "flex", alignItems: "center", gap: 3, padding: "4px 8px", borderRadius: 5, border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700, background: `${trans.color}15`, color: trans.color }}
+                            onClick={() => setSelectedId(isSelected ? null : a.id)}
+                            style={{ display: "flex", alignItems: "center", gap: 3, padding: "4px 8px", borderRadius: 5, background: "var(--slate-100)", color: "var(--slate-600)", border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700 }}
                           >
-                            {trans.icon} {trans.label}
+                            <Eye size={10} /> Ver
                           </button>
-                        )}
-                        {a.status !== "CANCELADO" && a.status !== "CONFIRMADO" && (
-                          <button
-                            onClick={() => cancel(a.id)}
-                            style={{ display: "flex", alignItems: "center", gap: 3, padding: "4px 8px", borderRadius: 5, border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700, background: "rgba(239,68,68,0.1)", color: "var(--red)" }}
-                          >
-                            <XCircle size={10} /> Cancelar
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setSelectedId(isSelected ? null : a.id)}
-                          style={{ display: "flex", alignItems: "center", gap: 3, padding: "4px 8px", borderRadius: 5, background: "var(--slate-100)", color: "var(--slate-600)", border: "none", cursor: "pointer", fontSize: 10, fontWeight: 700 }}
-                        >
-                          <Eye size={10} /> Ver
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
 
           {/* Inline detail */}
           {selected && (
@@ -187,7 +282,6 @@ export function AppointmentsView() {
             ))}
           </div>
 
-          {/* Quick add */}
           <button
             onClick={() => setNewOpen(true)}
             style={{ padding: "12px", borderRadius: 12, border: "2px dashed var(--slate-300)", background: "white", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "var(--slate-400)", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}

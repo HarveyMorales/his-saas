@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronRight, ChevronLeft, Check, Activity, Stethoscope, ClipboardList } from "lucide-react";
 import { useToast } from "@/lib/toast-context";
+import { createMedicalRecord } from "@/app/actions/medical-records";
 import type { Patient } from "@/lib/types";
 
 interface NewConsultationModalProps {
@@ -111,14 +112,33 @@ export function NewConsultationModal({ patient, onClose, onSaved }: NewConsultat
     return false;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!patient) return;
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      toast({ type: "success", title: "Evolución guardada", message: `HC de ${patient?.name} actualizada correctamente.` });
+    const { error } = await createMedicalRecord({
+      patientId: patient.id,
+      entryType: form.specialty || "CONSULTA",
+      subjective: form.subjective || null,
+      objective: form.objective || null,
+      assessment: form.diagnosis || null,
+      plan: form.plan || null,
+      diagnosisFreeText: form.diagnosis || null,
+      vitalsBpSystolic: form.bp_sys ? Number(form.bp_sys) : null,
+      vitalsBpDiastolic: form.bp_dia ? Number(form.bp_dia) : null,
+      vitalsHrBpm: form.hr ? Number(form.hr) : null,
+      vitalsTempC: form.temp ? Number(form.temp) : null,
+      vitalsWeightKg: form.weight ? Number(form.weight) : null,
+      vitalsHeightCm: form.height ? Number(form.height) : null,
+      isConfidential: form.confidential,
+    });
+    setSaving(false);
+    if (error) {
+      toast({ type: "error", title: "Error al guardar", message: error });
+    } else {
+      toast({ type: "success", title: "Evolución guardada", message: `HC de ${patient.name} actualizada correctamente.` });
       onSaved?.();
       onClose();
-    }, 900);
+    }
   };
 
   if (!patient) return null;

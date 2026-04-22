@@ -59,15 +59,15 @@ export function usePatients(tenantId: string | null, search?: string) {
 
 // ── Appointments hook ──────────────────────────────────────────
 export function useAppointments(tenantId: string | null, date?: string) {
-  const [appointments, setAppointments] = useState<Tables<"appointments">[]>([]);
+  const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetch = useCallback(async () => {
     if (!tenantId) return;
     setLoading(true);
-    let q = supabase
+    let q = (supabase as any)
       .from("appointments")
-      .select("*")
+      .select("*, patients(firstName, lastName), users(firstName, lastName, specialty)")
       .eq("tenantId", tenantId)
       .order("scheduledAt");
 
@@ -76,7 +76,7 @@ export function useAppointments(tenantId: string | null, date?: string) {
     }
 
     const { data } = await q;
-    setAppointments((data as any) ?? []);
+    setAppointments(data ?? []);
     setLoading(false);
   }, [tenantId, date]);
 
