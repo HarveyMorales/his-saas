@@ -25,16 +25,58 @@ export function LoginView({ onLogin }: LoginViewProps) {
   const [error, setError] = useState("");
   const [showDemo, setShowDemo] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
+
+    try {
+      // Try real Supabase auth first
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: pass,
+      });
+
+      if (!authError) {
+        // Get user profile to determine role/institution
+        const { data: profile } = await supabase
+          .from("users")
+          .select("*, tenants(id, name, type, slug, primaryColor)")
+          .eq("authId", (await supabase.auth.getUser()).data.user?.id ?? "")
+          .single();
+
+        if (profile) {
+          const tenant = (profile as any).tenants;
+          const loginUser: LoginUser = {
+            id: profile.id,
+            email: profile.email,
+            password: "",
+            name: `${profile.firstName} ${profile.lastName}`,
+            role: profile.role as LoginUser["role"],
+            avatar: `${profile.firstName[0]}${profile.lastName[0]}`,
+            institution: tenant?.id ?? null,
+            institutionName: tenant?.name ?? null,
+            specialty: profile.specialty ?? undefined,
+          };
+          setLoading(false);
+          onLogin(loginUser);
+          return;
+        }
+      }
+    } catch {
+      // Supabase not configured — fall through to mock
+    }
+
+    // Fallback: mock credentials for development
     const user = LOGIN_USERS.find(u => u.email === email.trim() && u.password === pass);
     if (!user) {
+      setLoading(false);
       setError("Email o contraseña incorrectos");
       return;
     }
-    setLoading(true);
-    setTimeout(() => { setLoading(false); onLogin(user); }, 700);
+    setTimeout(() => { setLoading(false); onLogin(user); }, 400);
   };
 
   const fillDemo = (u: LoginUser) => {

@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard, Users, Building2, ClipboardList, Settings, LogOut,
   UserPlus, Edit2, ToggleLeft, ToggleRight, Check, X, Activity,
   Database, Shield, Clock, Server, AlertTriangle, Eye, Share2, Edit3,
-  Wifi, HardDrive, Save,
+  Wifi, HardDrive, Save, RefreshCw,
 } from "lucide-react";
 import { LOGIN_USERS, INSTITUTIONS, PATIENTS, RECORDS, AUDIT_LOG } from "@/lib/data";
 import { useToast } from "@/lib/toast-context";
 import type { LoginUser } from "@/lib/types";
+import { getSystemStats, getAllUsers, getAllTenants, toggleUserActive } from "@/app/actions/admin";
 
 type AdminTab = "dashboard" | "usuarios" | "instituciones" | "auditoria" | "configuracion";
 
@@ -46,12 +47,20 @@ const INST_TYPE_LABELS = {
 
 // ─── Dashboard tab ─────────────────────────────────────────────────────────────
 function DashboardTab() {
-  const totalRecords = Object.values(RECORDS).reduce((s, arr) => s + arr.length, 0);
+  const [stats, setStats] = useState({ tenants: 0, users: 0, patients: 0, records: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    getSystemStats()
+      .then(s => { setStats(s); setStatsLoading(false); })
+      .catch(() => setStatsLoading(false));
+  }, []);
+
   const KPIS = [
-    { label: "Instituciones activas", value: INSTITUTIONS.length, icon: <Building2 size={18} />, color: "#00BFA6" },
-    { label: "Usuarios registrados", value: LOGIN_USERS.length, icon: <Users size={18} />, color: "#2563EB" },
-    { label: "Pacientes en sistema", value: PATIENTS.length, icon: <Activity size={18} />, color: "#8B5CF6" },
-    { label: "Registros de HC", value: totalRecords, icon: <Database size={18} />, color: "#F59E0B" },
+    { label: "Instituciones activas", value: statsLoading ? "…" : stats.tenants, icon: <Building2 size={18} />, color: "#00BFA6" },
+    { label: "Usuarios registrados", value: statsLoading ? "…" : stats.users, icon: <Users size={18} />, color: "#2563EB" },
+    { label: "Pacientes en sistema", value: statsLoading ? "…" : stats.patients, icon: <Activity size={18} />, color: "#8B5CF6" },
+    { label: "Registros de HC", value: statsLoading ? "…" : stats.records, icon: <Database size={18} />, color: "#F59E0B" },
   ];
 
   return (
@@ -169,17 +178,26 @@ function DashboardTab() {
 // ─── Users tab ─────────────────────────────────────────────────────────────────
 function UsersTab() {
   const { toast } = useToast();
-  const [users, setUsers] = useState(LOGIN_USERS.map(u => ({ ...u, active: true })));
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const toggle = (id: string) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, active: !u.active } : u));
-    const u = users.find(x => x.id === id);
-    if (u) toast({ type: u.active ? "warning" : "success", title: u.active ? "Usuario desactivado" : "Usuario activado", message: u.name });
+  useEffect(() => {
+    getAllUsers().then(({ data }) => {
+      if (data) setUsers(data);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const toggle = async (u: any) => {
+    const { error } = await toggleUserActive(u.id, !u.isActive);
+    if (error) { toast({ type: "error", title: "Error", message: error }); return; }
+    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, isActive: !u.isActive } : x));
+    toast({ type: u.isActive ? "warning" : "success", title: u.isActive ? "Usuario desactivado" : "Usuario activado", message: `${u.firstName} ${u.lastName}` });
   };
 
   const filtered = users.filter(u =>
-    u.name.toLowerCase().includes(search.toLowerCase()) ||
+    `${u.firstName} ${u.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
     u.email.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -207,65 +225,65 @@ function UsersTab() {
             style={{ width: 280, padding: "7px 12px", borderRadius: 8, border: "1px solid var(--slate-200)", fontSize: 13, outline: "none", background: "var(--slate-50)", color: "var(--navy)" }}
           />
         </div>
+        {loading ? (
+          <div style={{ padding: 40, textAlign: "center", color: "var(--slate-400)", fontSize: 13 }}>Cargando usuarios...</div>
+        ) : (
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "var(--slate-50)" }}>
-              {["Usuario", "Email / Contraseña", "Rol", "Institución", "Estado", "Acciones"].map(h => (
+              {["Usuario", "Email", "Rol", "Institución", "Estado", "Acciones"].map(h => (
                 <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--slate-500)", letterSpacing: 0.7, textTransform: "uppercase", borderBottom: "1px solid var(--slate-200)" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.map((u, i) => (
-              <tr key={u.id} style={{ borderBottom: i < filtered.length - 1 ? "1px solid var(--slate-100)" : "none", opacity: u.active ? 1 : 0.45 }}>
-                <td style={{ padding: "12px 16px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{
-                      width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                      background: `${ROLE_CFG[u.role].color}20`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, fontWeight: 700, color: ROLE_CFG[u.role].color,
-                    }}>{u.avatar}</div>
-                    <span style={{ fontWeight: 700, color: "var(--navy)" }}>{u.name}</span>
-                  </div>
-                </td>
-                <td style={{ padding: "12px 16px" }}>
-                  <div style={{ fontSize: 12, color: "var(--slate-600)" }}>{u.email}</div>
-                  <div style={{ fontSize: 11, color: "var(--slate-400)", fontFamily: "monospace", marginTop: 2 }}>pass: {u.password}</div>
-                </td>
-                <td style={{ padding: "12px 16px" }}><RoleBadge role={u.role} /></td>
-                <td style={{ padding: "12px 16px", fontSize: 12, color: "var(--slate-500)" }}>
-                  {u.institutionName ?? <span style={{ color: "var(--slate-300)" }}>—</span>}
-                </td>
-                <td style={{ padding: "12px 16px" }}>
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99,
-                    background: u.active ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
-                    color: u.active ? "#059669" : "#DC2626",
-                  }}>
-                    {u.active ? "Activo" : "Inactivo"}
-                  </span>
-                </td>
-                <td style={{ padding: "12px 16px" }}>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button
-                      onClick={() => toast({ type: "info", title: "Editar usuario", message: `Formulario de edición para ${u.name}` })}
-                      style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid var(--slate-200)", background: "white", cursor: "pointer", fontSize: 11, fontWeight: 600, color: "var(--slate-600)", display: "flex", alignItems: "center", gap: 4 }}
-                    >
-                      <Edit2 size={11} /> Editar
-                    </button>
-                    <button
-                      onClick={() => toggle(u.id)}
-                      style={{ padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, background: u.active ? "rgba(239,68,68,0.08)" : "rgba(16,185,129,0.08)", color: u.active ? "#DC2626" : "#059669" }}
-                    >
-                      {u.active ? <><ToggleRight size={12} /> Desactivar</> : <><ToggleLeft size={12} /> Activar</>}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filtered.map((u, i) => {
+              const initials = `${u.firstName?.[0] ?? ""}${u.lastName?.[0] ?? ""}`;
+              const roleCfg = ROLE_CFG[u.role as LoginUser["role"]] ?? { color: "#64748B", bg: "rgba(100,116,139,0.1)" };
+              return (
+                <tr key={u.id} style={{ borderBottom: i < filtered.length - 1 ? "1px solid var(--slate-100)" : "none", opacity: u.isActive ? 1 : 0.45 }}>
+                  <td style={{ padding: "12px 16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: `${roleCfg.color}20`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: roleCfg.color }}>
+                        {initials}
+                      </div>
+                      <span style={{ fontWeight: 700, color: "var(--navy)" }}>{u.firstName} {u.lastName}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: "12px 16px", fontSize: 12, color: "var(--slate-600)" }}>{u.email}</td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: roleCfg.bg, color: roleCfg.color }}>
+                      {u.role}
+                    </span>
+                  </td>
+                  <td style={{ padding: "12px 16px", fontSize: 12, color: "var(--slate-500)" }}>
+                    {u.tenants?.name ?? <span style={{ color: "var(--slate-300)" }}>—</span>}
+                  </td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99, background: u.isActive ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", color: u.isActive ? "#059669" : "#DC2626" }}>
+                      {u.isActive ? "Activo" : "Inactivo"}
+                    </span>
+                  </td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        onClick={() => toast({ type: "info", title: "Próximamente", message: "Modal de edición en desarrollo" })}
+                        style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid var(--slate-200)", background: "white", cursor: "pointer", fontSize: 11, fontWeight: 600, color: "var(--slate-600)", display: "flex", alignItems: "center", gap: 4 }}
+                      ><Edit2 size={11} /> Editar</button>
+                      <button
+                        onClick={() => toggle(u)}
+                        style={{ padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, background: u.isActive ? "rgba(239,68,68,0.08)" : "rgba(16,185,129,0.08)", color: u.isActive ? "#DC2626" : "#059669" }}
+                      >
+                        {u.isActive ? <><ToggleRight size={12} /> Desactivar</> : <><ToggleLeft size={12} /> Activar</>}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
+        )}
       </div>
     </div>
   );
@@ -274,95 +292,81 @@ function UsersTab() {
 // ─── Institutions tab ───────────────────────────────────────────────────────────
 function InstitutionsTab() {
   const { toast } = useToast();
+  const [tenants, setTenants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getAllTenants().then(({ data }) => {
+      if (data) setTenants(data);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const TYPE_ICONS: Record<string, string> = { CONSULTORIO: "🩺", CLINICA: "🏥", SANATORIO: "🏨", HOSPITAL: "🏨" };
+  const TYPE_COLORS: Record<string, string> = { CONSULTORIO: "#00BFA6", CLINICA: "#2563EB", SANATORIO: "#8B5CF6", HOSPITAL: "#EF4444" };
+  const STATUS_COLORS: Record<string, string> = { ACTIVE: "#10B981", TRIAL: "#F59E0B", SUSPENDED: "#EF4444", CANCELLED: "#6B7280" };
 
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
           <h2 style={{ margin: 0, fontFamily: "Georgia, serif", fontSize: 22, fontWeight: 700, color: "var(--navy)" }}>Instituciones</h2>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--slate-500)" }}>Gestión de consultorios, clínicas y hospitales</p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--slate-500)" }}>{tenants.length} instituciones en el sistema</p>
         </div>
         <button
           onClick={() => toast({ type: "info", title: "Próximamente", message: "Alta de nueva institución en desarrollo" })}
           style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 18px", borderRadius: 8, background: "var(--teal)", color: "white", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700 }}
-        >
-          <Building2 size={15} /> Nueva institución
-        </button>
+        ><Building2 size={15} /> Nueva institución</button>
       </div>
 
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 40, color: "var(--slate-400)", fontSize: 13 }}>Cargando instituciones...</div>
+      ) : (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-        {INSTITUTIONS.map(inst => {
-          const instUsers = LOGIN_USERS.filter(u => u.institution === inst.id);
-          const instPatients = PATIENTS.filter(p => p.institution === inst.id);
-          const typeInfo = INST_TYPE_LABELS[inst.type];
+        {tenants.map(inst => {
+          const color = inst.primaryColor ?? TYPE_COLORS[inst.type] ?? "#00BFA6";
+          const icon = TYPE_ICONS[inst.type] ?? "🏥";
+          const statusColor = STATUS_COLORS[inst.status] ?? "#6B7280";
           return (
-            <div key={inst.id} style={{ background: "white", borderRadius: 16, border: "1px solid var(--slate-200)", overflow: "hidden", borderTop: `4px solid ${inst.color}` }}>
+            <div key={inst.id} style={{ background: "white", borderRadius: 16, border: "1px solid var(--slate-200)", overflow: "hidden", borderTop: `4px solid ${color}` }}>
               <div style={{ padding: "22px 22px 16px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-                  <div style={{ width: 52, height: 52, borderRadius: 14, background: `${inst.color}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>
-                    {inst.icon}
+                  <div style={{ width: 52, height: 52, borderRadius: 14, background: `${color}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>
+                    {icon}
                   </div>
                   <div>
                     <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: "var(--navy)" }}>{inst.name}</div>
-                    <div style={{ fontSize: 11, color: "var(--slate-500)", marginTop: 3 }}>{typeInfo.icon} {typeInfo.label} · ID: {inst.id}</div>
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-                  {[
-                    { label: "Usuarios", value: instUsers.length, icon: <Users size={12} /> },
-                    { label: "Pacientes", value: instPatients.length, icon: <Activity size={12} /> },
-                  ].map((s, i) => (
-                    <div key={i} style={{ background: "var(--slate-50)", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
-                      <div style={{ fontSize: 10, color: "var(--slate-500)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                        {s.icon}{s.label}
-                      </div>
-                      <div style={{ fontFamily: "Georgia, serif", fontSize: 22, fontWeight: 700, color: inst.color }}>{s.value}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
-                  <span style={{ fontSize: 12, color: "var(--slate-500)" }}>Tenant activo</span>
-                  <span style={{ fontSize: 11, color: "var(--slate-400)", fontFamily: "monospace", marginLeft: "auto" }}>{inst.tenant}</span>
-                </div>
-
-                {instUsers.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "var(--slate-400)", textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 8 }}>Equipo</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                      {instUsers.map(u => (
-                        <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ width: 22, height: 22, borderRadius: 6, background: `${ROLE_CFG[u.role].color}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: ROLE_CFG[u.role].color, flexShrink: 0 }}>
-                            {u.avatar}
-                          </div>
-                          <span style={{ fontSize: 11, color: "var(--slate-600)", flex: 1 }}>{u.name}</span>
-                          <RoleBadge role={u.role} />
-                        </div>
-                      ))}
+                    <div style={{ fontSize: 11, color: "var(--slate-500)", marginTop: 3 }}>
+                      {inst.type} · slug: {inst.slug}
                     </div>
                   </div>
-                )}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor, boxShadow: `0 0 5px ${statusColor}` }} />
+                  <span style={{ fontSize: 12, color: "var(--slate-500)", fontWeight: 600 }}>{inst.status}</span>
+                  {inst.city && <span style={{ fontSize: 11, color: "var(--slate-400)", marginLeft: "auto" }}>📍 {inst.city}</span>}
+                </div>
+
+                <div style={{ fontSize: 10, fontFamily: "monospace", color: "var(--slate-400)", padding: "6px 8px", background: "var(--slate-50)", borderRadius: 6 }}>
+                  {inst.id}
+                </div>
               </div>
               <div style={{ padding: "12px 22px", borderTop: "1px solid var(--slate-100)", display: "flex", gap: 8 }}>
                 <button
-                  onClick={() => toast({ type: "info", title: "Editar institución", message: inst.name })}
+                  onClick={() => toast({ type: "info", title: "Editar", message: inst.name })}
                   style={{ flex: 1, padding: "7px 0", borderRadius: 7, background: "var(--slate-100)", color: "var(--slate-600)", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
-                >
-                  <Edit2 size={12} /> Editar
-                </button>
+                ><Edit2 size={12} /> Editar</button>
                 <button
-                  onClick={() => toast({ type: "info", title: "Configuración avanzada", message: `Módulos y permisos de ${inst.name}` })}
-                  style={{ flex: 1, padding: "7px 0", borderRadius: 7, background: `${inst.color}18`, color: inst.color, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
-                >
-                  <Settings size={12} /> Configurar
-                </button>
+                  onClick={() => toast({ type: "info", title: "Configurar", message: `Módulos de ${inst.name}` })}
+                  style={{ flex: 1, padding: "7px 0", borderRadius: 7, background: `${color}18`, color: color, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                ><Settings size={12} /> Configurar</button>
               </div>
             </div>
           );
         })}
       </div>
+      )}
     </div>
   );
 }

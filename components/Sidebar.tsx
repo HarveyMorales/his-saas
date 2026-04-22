@@ -152,11 +152,35 @@ export function Sidebar({ open, activeNav, institution, currentUser, onNav, onCh
           display: "flex", alignItems: "center", justifyContent: "center",
           fontFamily: "Georgia, serif", fontWeight: 700, fontSize: 11, color: "var(--teal)",
         }}>HS</div>
-        {open && (
-          <div style={{ overflow: "hidden" }}>
-            <div style={{ fontSize: 12, color: "white", fontWeight: 600 }}>Harvey Specter</div>
-            <div style={{ fontSize: 10, color: "var(--slate-500)" }}>IT Admin · Global</div>
+        {open && currentUser && (
+          <div style={{ flex: 1, overflow: "hidden" }}>
+            <div style={{ fontSize: 12, color: "white", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {currentUser.name}
+            </div>
+            <div style={{ fontSize: 10, color: "var(--slate-500)" }}>
+              {currentUser.role} {currentUser.institutionName ? `· ${currentUser.institutionName}` : ""}
+            </div>
           </div>
+        )}
+        {open && onLogout && (
+          <button
+            onClick={onLogout}
+            title="Cerrar sesión"
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "var(--slate-600)", padding: 4, borderRadius: 6,
+              display: "flex", alignItems: "center",
+              flexShrink: 0,
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = "#EF4444")}
+            onMouseLeave={e => (e.currentTarget.style.color = "var(--slate-600)")}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </button>
         )}
       </div>
     </aside>
