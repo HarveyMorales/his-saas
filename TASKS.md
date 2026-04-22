@@ -52,9 +52,11 @@
 
 ---
 
-## ⏳ EN PROGRESO
+## ⏳ PENDIENTE — PASO MANUAL NECESARIO
 
-- [ ] NotificationsPanel — wire a Supabase (turnos próximos + share requests)
+- [ ] Ejecutar `supabase_migration.sql` en Supabase Dashboard → SQL Editor
+  (crea tablas: insurance_providers, nomenclators, medical_practices,
+   patient_coverages, invoices, invoice_items, beds, admissions)
 
 ---
 
@@ -87,9 +89,9 @@
 - [ ] SharingView: mostrar nombre de institución (join a tenants)
 - [ ] SharingView: mostrar nombre de médico (join a users)
 
-### Vistas aún mock
-- [ ] InsuranceView — tabla insurance_plans pendiente en DB
-- [ ] GuardsView — tabla guards/shifts pendiente en DB
+### Vistas (todas tienen mock fallback)
+- [x] InsuranceView — LIVE si migration ejecutada (obras sociales + nomenclador)
+- [x] GuardsView — LIVE si migration ejecutada (camas + internaciones)
 
 ---
 

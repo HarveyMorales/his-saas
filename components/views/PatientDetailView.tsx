@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Share2, Plus, ChevronDown, ChevronUp, Lock, FileText, Calendar, CreditCard, Paperclip, Activity, Pill, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Share2, Plus, ChevronDown, ChevronUp, Lock, FileText, Calendar, CreditCard, Paperclip, Activity, Pill, AlertTriangle, Edit2 } from "lucide-react";
+import { EditPatientModal } from "@/components/modals/EditPatientModal";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { VitalsTrendChart } from "@/components/ui/VitalsTrendChart";
@@ -65,6 +66,8 @@ function toMedicalRecord(r: any): MedicalRecord {
 export function PatientDetailView({ patient, onBack, onNav, onNewConsultation, consultationRefreshKey }: PatientDetailViewProps) {
   const [activeTab, setActiveTab] = useState<Tab>("hc");
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
+  const [showEdit, setShowEdit] = useState(false);
+  const [currentPatient, setCurrentPatient] = useState(patient);
 
   const { records: dbRecords, loading: recordsLoading, refetch: refetchRecords } = useMedicalRecords(patient.id);
 
@@ -98,6 +101,14 @@ export function PatientDetailView({ patient, onBack, onNav, onNewConsultation, c
 
   return (
     <div>
+      {showEdit && (
+        <EditPatientModal
+          patient={currentPatient}
+          onClose={() => setShowEdit(false)}
+          onSaved={() => { setShowEdit(false); }}
+        />
+      )}
+
       {/* Back */}
       <button
         onClick={onBack}
@@ -139,6 +150,12 @@ export function PatientDetailView({ patient, onBack, onNav, onNewConsultation, c
             )}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => setShowEdit(true)}
+              style={{ padding: "8px 16px", borderRadius: 8, background: "var(--slate-100)", color: "var(--slate-600)", border: "1px solid var(--slate-200)", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}
+            >
+              <Edit2 size={14} /> Editar
+            </button>
             <button
               onClick={onNewConsultation}
               style={{ padding: "8px 16px", borderRadius: 8, background: "var(--teal)", color: "white", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}

@@ -58,6 +58,22 @@ export async function rejectShareRequest(id: string) {
   return { data, error: error?.message ?? null };
 }
 
+export async function revokeShareRequest(id: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await (supabase as any)
+    .from("share_requests")
+    .update({
+      status: "REVOKED",
+      updatedAt: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  return { data, error: error?.message ?? null };
+}
+
 export async function createShareRequest(payload: {
   toTenantId: string;
   patientId: string;

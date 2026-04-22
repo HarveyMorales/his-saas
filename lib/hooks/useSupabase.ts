@@ -161,7 +161,7 @@ export function useShareRequests(tenantId: string | null) {
     setLoading(true);
     const { data } = await (supabase as any)
       .from("share_requests")
-      .select("*, patients(firstName, lastName, dni)")
+      .select("*, patients(firstName, lastName, dni), fromTenant:tenants!fromTenantId(name), toTenant:tenants!toTenantId(name)")
       .or(`fromTenantId.eq.${tenantId},toTenantId.eq.${tenantId}`)
       .order("createdAt", { ascending: false });
     setRequests(data ?? []);

@@ -4,7 +4,7 @@ import { Info, Eye, Share2, Edit3 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { HC_SHARE_REQUESTS, AUDIT_LOG } from "@/lib/data";
 import { useCurrentUser, useShareRequests, useAuditLogs } from "@/lib/hooks/useSupabase";
-import { approveShareRequest, rejectShareRequest } from "@/app/actions/sharing";
+import { approveShareRequest, rejectShareRequest, revokeShareRequest } from "@/app/actions/sharing";
 import { useToast } from "@/lib/toast-context";
 
 const STATUS_MAP: Record<string, string> = {
@@ -35,12 +35,18 @@ export function SharingView() {
     else { toast({ type: "warning", title: "Solicitud rechazada", message: "" }); refetch(); }
   };
 
+  const handleRevoke = async (id: string) => {
+    const { error } = await revokeShareRequest(id);
+    if (error) toast({ type: "error", title: "Error", message: error });
+    else { toast({ type: "warning", title: "Acceso revocado", message: "El acceso fue cancelado" }); refetch(); }
+  };
+
   const displayRequests = isLive
     ? dbRequests.map((r: any) => ({
         id: r.id,
         patient: r.patients ? `${r.patients.lastName}, ${r.patients.firstName}` : "—",
-        fromInst: r.fromTenantId,
-        toInst: r.toTenantId,
+        fromInst: r.fromTenant?.name ?? r.fromTenantId,
+        toInst: r.toTenant?.name ?? r.toTenantId,
         requestedBy: r.requestedById,
         reason: r.reason,
         status: STATUS_MAP[r.status] ?? "PENDIENTE",
@@ -117,7 +123,7 @@ export function SharingView() {
                   </div>
                 )}
                 {req.status === "APROBADO" && (
-                  <button style={{ width: "100%", padding: "8px 0", borderRadius: 7, background: "white", color: "var(--amber)", border: "1px solid var(--amber)", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
+                  <button onClick={() => isLive ? handleRevoke(req.id) : undefined} style={{ width: "100%", padding: "8px 0", borderRadius: 7, background: "white", color: "var(--amber)", border: "1px solid var(--amber)", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
                     Revocar acceso
                   </button>
                 )}

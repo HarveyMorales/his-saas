@@ -30,7 +30,8 @@ function toMockPatient(p: any): Patient {
     alert: p.allergies ? `🔴 Alergia: ${p.allergies}` : null,
     lastVisit: p.updatedAt ? new Date(p.updatedAt).toLocaleDateString("es-AR") : "—",
     institution: p.tenantId,
-  };
+    _raw: p,
+  } as Patient;
 }
 
 export function PatientsView({ onSelectPatient, onNewPatient, refreshKey }: PatientsViewProps) {
