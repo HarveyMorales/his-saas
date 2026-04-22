@@ -107,6 +107,73 @@ export function useMedicalRecords(patientId: string | null) {
   return { records, loading };
 }
 
+// ── Tenant users hook ──────────────────────────────────────────
+export function useTenantUsers(tenantId: string | null) {
+  const [users, setUsers] = useState<Tables<"users">[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetch = useCallback(async () => {
+    if (!tenantId) return;
+    setLoading(true);
+    const { data } = await supabase
+      .from("users")
+      .select("*")
+      .eq("tenantId", tenantId)
+      .order("lastName");
+    setUsers((data as any) ?? []);
+    setLoading(false);
+  }, [tenantId]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+  return { users, loading, refetch: fetch };
+}
+
+// ── Audit logs hook ─────────────────────────────────────────────
+export function useAuditLogs(tenantId: string | null, limit = 50) {
+  const [logs, setLogs] = useState<Tables<"audit_logs">[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    setLoading(true);
+    (supabase as any)
+      .from("audit_logs")
+      .select("*, users(firstName, lastName, email)")
+      .eq("tenantId", tenantId)
+      .order("createdAt", { ascending: false })
+      .limit(limit)
+      .then(({ data }: any) => {
+        setLogs(data ?? []);
+        setLoading(false);
+      });
+  }, [tenantId, limit]);
+
+  return { logs, loading };
+}
+
+// ── Billing items hook ──────────────────────────────────────────
+export function useBillingItems(tenantId: string | null) {
+  const [items, setItems] = useState<Tables<"billing_items">[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    setLoading(true);
+    (supabase as any)
+      .from("billing_items")
+      .select("*, patients(firstName, lastName)")
+      .eq("tenantId", tenantId)
+      .order("serviceDate", { ascending: false })
+      .limit(100)
+      .then(({ data }: any) => {
+        setItems(data ?? []);
+        setLoading(false);
+      });
+  }, [tenantId]);
+
+  return { items, loading };
+}
+
 // ── Doctors hook ───────────────────────────────────────────────
 export function useDoctors(tenantId: string | null) {
   const [doctors, setDoctors] = useState<Tables<"users">[]>([]);
