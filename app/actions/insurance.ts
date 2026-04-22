@@ -83,6 +83,7 @@ export async function updateMedicalPractice(id: string, payload: {
 export async function createPatientCoverage(payload: {
   patientId: string; insuranceProviderId: string;
   affiliateNumber?: string; planName?: string; isPrimary?: boolean;
+  validFrom?: string; validUntil?: string;
 }) {
   const supabase = await createClient();
   const profile = await getCurrentUserProfile();

@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/Badge";
 import { VitalsTrendChart } from "@/components/ui/VitalsTrendChart";
 import { RECORDS, APPOINTMENTS, BILLING } from "@/lib/data";
 import { getSpecialtyColor } from "@/lib/utils";
-import { useMedicalRecords } from "@/lib/hooks/useSupabase";
+import { useMedicalRecords, useCurrentUser, usePatientCoveragesByPatient } from "@/lib/hooks/useSupabase";
+import { NewShareRequestModal } from "@/components/modals/NewShareRequestModal";
 import type { Patient, NavId, MedicalRecord } from "@/lib/types";
 
 interface PatientDetailViewProps {
@@ -67,9 +68,14 @@ export function PatientDetailView({ patient, onBack, onNav, onNewConsultation, c
   const [activeTab, setActiveTab] = useState<Tab>("hc");
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
   const [showEdit, setShowEdit] = useState(false);
+  const [showShareRequest, setShowShareRequest] = useState(false);
   const [currentPatient, setCurrentPatient] = useState(patient);
 
+  const { profile } = useCurrentUser();
+  const tenantId = (profile as any)?.tenantId ?? null;
+
   const { records: dbRecords, loading: recordsLoading, refetch: refetchRecords } = useMedicalRecords(patient.id);
+  const { coverages, refetch: refetchCoverages } = usePatientCoveragesByPatient(tenantId, patient.id as string);
 
   const prevRefreshKey = useRef(consultationRefreshKey);
   useEffect(() => {
@@ -106,6 +112,14 @@ export function PatientDetailView({ patient, onBack, onNav, onNewConsultation, c
           patient={currentPatient}
           onClose={() => setShowEdit(false)}
           onSaved={() => { setShowEdit(false); }}
+        />
+      )}
+      {showShareRequest && tenantId && (
+        <NewShareRequestModal
+          patient={currentPatient}
+          tenantId={tenantId}
+          onClose={() => setShowShareRequest(false)}
+          onSaved={() => setShowShareRequest(false)}
         />
       )}
 
@@ -163,7 +177,7 @@ export function PatientDetailView({ patient, onBack, onNav, onNewConsultation, c
               <Plus size={14} /> Nueva evolución
             </button>
             <button
-              onClick={() => onNav("sharing")}
+              onClick={() => tenantId ? setShowShareRequest(true) : onNav("sharing")}
               style={{ padding: "8px 16px", borderRadius: 8, background: "rgba(245,158,11,0.1)", color: "var(--amber)", border: "1px solid rgba(245,158,11,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}
             >
               <Share2 size={14} /> Compartir HC
@@ -415,32 +429,60 @@ export function PatientDetailView({ patient, onBack, onNav, onNewConsultation, c
 
       {/* Facturación tab */}
       {activeTab === "facturacion" && (
-        <div style={{ background: "white", borderRadius: 14, border: "1px solid var(--slate-200)", overflow: "hidden" }}>
-          {bills.length === 0 ? (
-            <div style={{ padding: 40, textAlign: "center", color: "var(--slate-400)" }}>Sin prestaciones registradas</div>
-          ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: "var(--slate-50)" }}>
-                  {["Fecha", "Práctica", "Obra Social", "Monto", "Estado", "Comprobante"].map(h => (
-                    <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--slate-500)", letterSpacing: 0.6, textTransform: "uppercase", borderBottom: "1px solid var(--slate-200)" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {bills.map((b, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid var(--slate-100)" }}>
-                    <td style={{ padding: "10px 14px", color: "var(--slate-500)", fontSize: 12 }}>{b.date}</td>
-                    <td style={{ padding: "10px 14px", fontWeight: 600 }}>{b.practice}</td>
-                    <td style={{ padding: "10px 14px", color: "var(--slate-500)" }}>{b.obra}</td>
-                    <td style={{ padding: "10px 14px", fontFamily: "Georgia, serif", fontWeight: 700, color: "var(--navy)" }}>${b.amount.toLocaleString()}</td>
-                    <td style={{ padding: "10px 14px" }}><Badge status={b.status} /></td>
-                    <td style={{ padding: "10px 14px", fontSize: 11, color: "var(--slate-400)", fontFamily: "monospace" }}>{b.invoice ?? "—"}</td>
-                  </tr>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* Coberturas */}
+          {coverages.length > 0 && (
+            <div style={{ background: "white", borderRadius: 14, border: "1px solid var(--slate-200)", overflow: "hidden" }}>
+              <div style={{ padding: "12px 18px", borderBottom: "1px solid var(--slate-100)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 14, fontWeight: 700, color: "var(--navy)" }}>Coberturas activas</div>
+              </div>
+              <div style={{ padding: "10px 18px", display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {coverages.map((c: any) => (
+                  <div key={c.id} style={{ background: c.isPrimary ? "rgba(0,191,166,0.08)" : "var(--slate-50)", border: `1px solid ${c.isPrimary ? "rgba(0,191,166,0.3)" : "var(--slate-200)"}`, borderRadius: 10, padding: "10px 14px", minWidth: 180 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: "var(--navy)" }}>{c.insurance_providers?.name ?? "—"}</span>
+                      {c.isPrimary && <span style={{ fontSize: 9, fontWeight: 700, background: "rgba(0,191,166,0.15)", color: "var(--teal)", padding: "1px 6px", borderRadius: 99 }}>PRINCIPAL</span>}
+                    </div>
+                    {c.affiliateNumber && <div style={{ fontSize: 11, color: "var(--slate-500)" }}>Afiliado: {c.affiliateNumber}</div>}
+                    {c.planName && <div style={{ fontSize: 11, color: "var(--slate-500)" }}>Plan: {c.planName}</div>}
+                    <div style={{ fontSize: 10, color: c.status === "ACTIVE" ? "var(--green)" : "var(--amber)", fontWeight: 700, marginTop: 4 }}>{c.status === "ACTIVE" ? "ACTIVA" : c.status}</div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
           )}
+
+          {/* Prestaciones */}
+          <div style={{ background: "white", borderRadius: 14, border: "1px solid var(--slate-200)", overflow: "hidden" }}>
+            <div style={{ padding: "12px 18px", borderBottom: "1px solid var(--slate-100)" }}>
+              <div style={{ fontFamily: "Georgia, serif", fontSize: 14, fontWeight: 700, color: "var(--navy)" }}>Prestaciones</div>
+            </div>
+            {bills.length === 0 ? (
+              <div style={{ padding: 40, textAlign: "center", color: "var(--slate-400)" }}>Sin prestaciones registradas</div>
+            ) : (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: "var(--slate-50)" }}>
+                    {["Fecha", "Práctica", "Obra Social", "Monto", "Estado", "Comprobante"].map(h => (
+                      <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--slate-500)", letterSpacing: 0.6, textTransform: "uppercase", borderBottom: "1px solid var(--slate-200)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {bills.map((b, i) => (
+                    <tr key={i} style={{ borderBottom: "1px solid var(--slate-100)" }}>
+                      <td style={{ padding: "10px 14px", color: "var(--slate-500)", fontSize: 12 }}>{b.date}</td>
+                      <td style={{ padding: "10px 14px", fontWeight: 600 }}>{b.practice}</td>
+                      <td style={{ padding: "10px 14px", color: "var(--slate-500)" }}>{b.obra}</td>
+                      <td style={{ padding: "10px 14px", fontFamily: "Georgia, serif", fontWeight: 700, color: "var(--navy)" }}>${b.amount.toLocaleString()}</td>
+                      <td style={{ padding: "10px 14px" }}><Badge status={b.status} /></td>
+                      <td style={{ padding: "10px 14px", fontSize: 11, color: "var(--slate-400)", fontFamily: "monospace" }}>{b.invoice ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       )}
 

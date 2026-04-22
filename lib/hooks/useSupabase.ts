@@ -161,7 +161,7 @@ export function useShareRequests(tenantId: string | null) {
     setLoading(true);
     const { data } = await (supabase as any)
       .from("share_requests")
-      .select("*, patients(firstName, lastName, dni), fromTenant:tenants!fromTenantId(name), toTenant:tenants!toTenantId(name)")
+      .select("*, patients(firstName, lastName, dni), fromTenant:tenants!fromTenantId(name), toTenant:tenants!toTenantId(name), requester:users!requestedById(firstName, lastName)")
       .or(`fromTenantId.eq.${tenantId},toTenantId.eq.${tenantId}`)
       .order("createdAt", { ascending: false });
     setRequests(data ?? []);
@@ -170,6 +170,49 @@ export function useShareRequests(tenantId: string | null) {
 
   useEffect(() => { fetch(); }, [fetch]);
   return { requests, loading, refetch: fetch };
+}
+
+// ── Tenants hook (for share request destination) ────────────────
+export function useTenants(excludeTenantId?: string | null) {
+  const [tenants, setTenants] = useState<any[]>([]);
+
+  useEffect(() => {
+    (supabase as any)
+      .from("tenants")
+      .select("id, name, type")
+      .eq("isActive", true)
+      .order("name")
+      .then(({ data }: any) => {
+        const filtered = excludeTenantId
+          ? (data ?? []).filter((t: any) => t.id !== excludeTenantId)
+          : (data ?? []);
+        setTenants(filtered);
+      });
+  }, [excludeTenantId]);
+
+  return { tenants };
+}
+
+// ── Patient coverages by patient hook ──────────────────────────
+export function usePatientCoveragesByPatient(tenantId: string | null, patientId: string | null) {
+  const [coverages, setCoverages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetch = useCallback(async () => {
+    if (!tenantId || !patientId) return;
+    setLoading(true);
+    const { data } = await (supabase as any)
+      .from("patient_coverages")
+      .select("*, insurance_providers(name, code)")
+      .eq("tenantId", tenantId)
+      .eq("patientId", patientId)
+      .order("isPrimary", { ascending: false });
+    setCoverages(data ?? []);
+    setLoading(false);
+  }, [tenantId, patientId]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+  return { coverages, loading, refetch: fetch };
 }
 
 // ── Billing items hook ──────────────────────────────────────────

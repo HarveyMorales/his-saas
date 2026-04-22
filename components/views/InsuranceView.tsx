@@ -7,6 +7,7 @@ import { useCurrentUser, useInsuranceProviders, useMedicalPractices, usePatientC
 import { updateInsuranceProvider } from "@/app/actions/insurance";
 import { NewInsuranceModal } from "@/components/modals/NewInsuranceModal";
 import { NewPracticeModal } from "@/components/modals/NewPracticeModal";
+import { NewCoverageModal } from "@/components/modals/NewCoverageModal";
 import { useToast } from "@/lib/toast-context";
 
 type DetailTab = "nomenclador" | "pacientes";
@@ -23,9 +24,10 @@ export function InsuranceView() {
   const [search, setSearch] = useState("");
   const [showNewInsurance, setShowNewInsurance] = useState(false);
   const [showNewPractice, setShowNewPractice] = useState(false);
+  const [showNewCoverage, setShowNewCoverage] = useState(false);
 
   const { practices, nomenclators } = useMedicalPractices(tenantId, selectedId);
-  const { coverages } = usePatientCoverages(tenantId, selectedId);
+  const { coverages, refetch: refetchCoverages } = usePatientCoverages(tenantId, selectedId);
 
   // Unify mock + live
   const allProviders = isLive
@@ -72,6 +74,15 @@ export function InsuranceView() {
           nomenclators={nomenclators}
           onClose={() => setShowNewPractice(false)}
           onSaved={() => { setShowNewPractice(false); }}
+        />
+      )}
+      {showNewCoverage && selectedId && selectedProvider && (
+        <NewCoverageModal
+          tenantId={tenantId!}
+          providerId={selectedId}
+          providerName={selectedProvider.name}
+          onClose={() => setShowNewCoverage(false)}
+          onSaved={() => { setShowNewCoverage(false); refetchCoverages(); }}
         />
       )}
 
@@ -200,6 +211,13 @@ export function InsuranceView() {
                   onClick={() => isLive ? setShowNewPractice(true) : undefined}
                   style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 7, background: "var(--teal)", color: "white", border: "none", cursor: isLive ? "pointer" : "not-allowed", fontSize: 12, fontWeight: 700, alignSelf: "center", opacity: isLive ? 1 : 0.6 }}>
                   <Plus size={12} /> Agregar práctica
+                </button>
+              )}
+              {detailTab === "pacientes" && isLive && (
+                <button
+                  onClick={() => setShowNewCoverage(true)}
+                  style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 7, background: "var(--teal)", color: "white", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, alignSelf: "center" }}>
+                  <Plus size={12} /> Asignar paciente
                 </button>
               )}
             </div>

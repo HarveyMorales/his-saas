@@ -47,7 +47,9 @@ export function SharingView() {
         patient: r.patients ? `${r.patients.lastName}, ${r.patients.firstName}` : "—",
         fromInst: r.fromTenant?.name ?? r.fromTenantId,
         toInst: r.toTenant?.name ?? r.toTenantId,
-        requestedBy: r.requestedById,
+        requestedBy: r.requester
+          ? `${r.requester.firstName ?? ""} ${r.requester.lastName ?? ""}`.trim()
+          : r.requestedById,
         reason: r.reason,
         status: STATUS_MAP[r.status] ?? "PENDIENTE",
         date: r.createdAt ? new Date(r.createdAt).toLocaleDateString("es-AR") : "—",
