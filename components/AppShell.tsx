@@ -166,9 +166,23 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
     );
   }
 
-  // ── Admin IT app ─────────────────────────────────────────────────────────────
-  if (currentUser?.role === "ADMIN_IT") {
-    return <AdminView currentUser={currentUser} onLogout={handleLogout} />;
+  // Build a display user from real supabaseProfile when available
+  const displayUser: LoginUser | null = currentUser ?? (supabaseProfile ? {
+    id: supabaseProfile.id,
+    email: supabaseProfile.email,
+    password: "",
+    name: `${supabaseProfile.firstName ?? ""} ${supabaseProfile.lastName ?? ""}`.trim() || supabaseProfile.email,
+    role: supabaseProfile.role as LoginUser["role"],
+    avatar: `${supabaseProfile.firstName?.[0] ?? ""}${supabaseProfile.lastName?.[0] ?? ""}`.toUpperCase(),
+    institution: supabaseProfile.tenantId ?? null,
+    institutionName: supabaseProfile.tenants?.name ?? null,
+    specialty: supabaseProfile.specialty ?? undefined,
+  } : null);
+
+  // ── Admin views (mock ADMIN_IT or real SUPER_ADMIN) ─────────────────────────
+  const isSuperAdmin = currentUser?.role === "ADMIN_IT" || supabaseProfile?.role === "SUPER_ADMIN";
+  if (isSuperAdmin) {
+    return <AdminView currentUser={displayUser} onLogout={handleLogout} />;
   }
 
   // ── Normal app ───────────────────────────────────────────────────────────────
@@ -231,7 +245,7 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
           open={sidebarOpen}
           activeNav={activeNav}
           institution={institution}
-          currentUser={currentUser}
+          currentUser={displayUser}
           onNav={handleNav}
           onChangeInstitution={() => setPhase("select-institution")}
           onLogout={handleLogout}

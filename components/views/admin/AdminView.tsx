@@ -15,7 +15,7 @@ import { getSystemStats, getAllUsers, getAllTenants, toggleUserActive } from "@/
 type AdminTab = "dashboard" | "usuarios" | "instituciones" | "auditoria" | "configuracion";
 
 interface AdminViewProps {
-  currentUser: LoginUser;
+  currentUser: LoginUser | null;
   onLogout: () => void;
 }
 
@@ -613,10 +613,10 @@ export function AdminView({ currentUser, onLogout }: AdminViewProps) {
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
           <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(239,68,68,0.2)", border: "1.5px solid rgba(239,68,68,0.4)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 11, color: "#EF4444", flexShrink: 0 }}>
-              {currentUser.avatar}
+              {currentUser?.avatar ?? "SA"}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: "white", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser.name}</div>
+              <div style={{ fontSize: 12, color: "white", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser?.name ?? "Super Admin"}</div>
               <div style={{ fontSize: 10, color: "var(--slate-500)" }}>IT Admin · Global</div>
             </div>
           </div>
