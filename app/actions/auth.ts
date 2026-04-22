@@ -50,6 +50,60 @@ export async function getCurrentUserProfile() {
   return data;
 }
 
+export async function inviteUser(payload: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  specialty?: string | null;
+  licenseNum?: string | null;
+  phone?: string | null;
+}) {
+  const profile = await getCurrentUserProfile();
+  if (!profile) return { error: "No autenticado" };
+
+  const p = profile as any;
+  if (p.role !== "TENANT_ADMIN" && p.role !== "SUPER_ADMIN") {
+    return { error: "Sin permisos para invitar usuarios" };
+  }
+
+  const adminClient = createAdminClient();
+  const tempPassword = Math.random().toString(36).slice(-10) + "Aa1!";
+
+  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+    email: payload.email,
+    password: tempPassword,
+    email_confirm: true,
+  });
+
+  if (authError || !authData.user) {
+    return { error: authError?.message ?? "Error al crear usuario" };
+  }
+
+  const { error: profileError } = await adminClient.from("users").insert({
+    authId: authData.user.id,
+    tenantId: p.tenantId,
+    role: payload.role as any,
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    email: payload.email,
+    phone: payload.phone ?? null,
+    specialty: payload.specialty ?? null,
+    licenseNum: payload.licenseNum ?? null,
+    avatarUrl: null,
+    isActive: true,
+    lastLoginAt: null,
+    updatedAt: new Date().toISOString(),
+  });
+
+  if (profileError) {
+    await adminClient.auth.admin.deleteUser(authData.user.id);
+    return { error: "Error al crear perfil: " + profileError.message };
+  }
+
+  return { success: true, tempPassword };
+}
+
 export async function signUp(formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;

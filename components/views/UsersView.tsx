@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { Plus, Edit2, ToggleLeft, ToggleRight } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { INSTITUTIONS, USERS } from "@/lib/data";
 import { useCurrentUser, useTenantUsers } from "@/lib/hooks/useSupabase";
 import { toggleUserActive } from "@/app/actions/admin";
 import { useToast } from "@/lib/toast-context";
+import { InviteUserModal } from "@/components/modals/InviteUserModal";
 
 const ROLE_LABELS: Record<string, string> = {
   MEDICO: "Médico",
@@ -31,6 +33,7 @@ export function UsersView() {
   const tenantId = (profile as any)?.tenantId ?? null;
   const isLive = !!tenantId;
   const { users: dbUsers, loading, refetch } = useTenantUsers(tenantId);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const handleToggle = async (userId: string, currentActive: boolean) => {
     const { error } = await toggleUserActive(userId, !currentActive);
@@ -45,6 +48,7 @@ export function UsersView() {
   if (isLive) {
     return (
       <div>
+        {inviteOpen && <InviteUserModal onClose={() => setInviteOpen(false)} onSaved={() => { setInviteOpen(false); refetch(); }} />}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
             <h1 style={{ margin: 0, fontFamily: "Georgia, serif", fontSize: 24, fontWeight: 700, color: "var(--navy)" }}>
@@ -55,7 +59,10 @@ export function UsersView() {
               <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: "rgba(16,185,129,0.1)", color: "#059669" }}>LIVE DB</span>
             </p>
           </div>
-          <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 18px", borderRadius: 8, background: "var(--teal)", color: "white", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+          <button
+            onClick={() => setInviteOpen(true)}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 18px", borderRadius: 8, background: "var(--teal)", color: "white", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700 }}
+          >
             <Plus size={15} /> Invitar usuario
           </button>
         </div>
