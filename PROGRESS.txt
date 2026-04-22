@@ -1,0 +1,199 @@
+================================================================================
+  HIS SaaS — Historia Clínica Electrónica
+  REPORTE DE PROGRESO
+  Fecha: 2026-04-22
+================================================================================
+
+STACK TÉCNICO
+─────────────
+  Frontend : Next.js 14 (App Router) + TypeScript
+  Backend  : Supabase (PostgreSQL, Auth, RLS)
+  ORM      : Prisma (columnas camelCase)
+  UI       : Inline styles + componentes propios (sin Tailwind)
+  Deploy   : Vercel (pendiente login del usuario)
+  Repo     : https://github.com/HarveyMorales/his-saas
+
+SUPABASE
+  Proyecto : fxgnoexdeacuwezcpqpo
+  Tablas   : tenants, users, patients, appointments, medical_records,
+             billing_items, share_requests, audit_logs
+  CRÍTICO  : Todas las columnas son camelCase (Prisma), NO snake_case
+
+================================================================================
+  COMMITS REALIZADOS (cronológico)
+================================================================================
+
+53c00b0  feat: wire real Supabase data — AdminView + hooks + auth login
+  - Creados lib/hooks/useSupabase.ts con hooks base
+  - useCurrentUser, usePatients, useAppointments, useMedicalRecords
+  - LoginView conectado a Supabase Auth
+  - AdminView recibe supabaseProfile como prop
+  - Middleware verifica sesión y redirige
+
+cdb66ee  feat: wire real Supabase data — Appointments, PatientDetail, modals
+  - AppointmentsView: usa useAppointments + join patients/users
+  - PatientDetailView: usa useMedicalRecords
+  - NewConsultationModal: llama createMedicalRecord server action
+  - NewPatientModal: llama createPatient server action
+
+b4718a2  feat: wire DashboardView + NewAppointmentModal to real Supabase data
+  - DashboardView: stats reales (turnos hoy, pacientes, pendientes)
+  - NewAppointmentModal: dropdowns con pacientes/doctores reales
+  - useDoctors hook agregado
+
+2bc77e6  feat: wire AuditView + UsersView + add tenant hooks
+  - AuditView: usa useAuditLogs(tenantId, 100)
+  - UsersView: usa useTenantUsers, toggleUserActive server action
+  - useTenantUsers, useAuditLogs, useBillingItems agregados
+
+00ddedd  feat: wire BillingView to real billing_items table
+  - BillingView: usa useBillingItems
+  - Status mapping: DRAFT/PENDING→PENDIENTE, APPROVED/PAID→LIQUIDADO
+
+16ac87e  feat: invite user flow — InviteUserModal + inviteUser server action
+  - InviteUserModal: formulario → pantalla éxito con temp password
+  - inviteUser: crea usuario en Supabase Auth + tabla users
+  - Campos specialty/licenseNum cuando role=MEDICO
+
+d180f4b  feat: live patient search in command palette + DB patient navigation
+  - CommandPalette: búsqueda debounced en Supabase (200ms)
+  - handleSelectPatientById: busca en mock primero, luego DB
+
+c70a031  fix: patient list refreshes after new patient created
+  - refreshKey prop en PatientsView
+  - useRef + useEffect para detectar cambio y llamar refetch()
+
+9151700  feat: display real user name in Sidebar + SUPER_ADMIN routing
+  - displayUser construido desde supabaseProfile
+  - isSuperAdmin = role === "SUPER_ADMIN" || "ADMIN_IT"
+
+06dde61  fix: redirect to /dashboard after Supabase login
+  - window.location.href = "/dashboard" (full page reload)
+  - Necesario para que middleware capture la sesión
+
+6606c52  fix: medical records refresh after new consultation saved
+  - consultationRefreshKey en AppShell
+  - PatientDetailView recibe y reacciona al key change
+
+447fdc8  feat: wire SharingView + share_requests table to Supabase
+  - SharingView: useShareRequests + useAuditLogs
+  - approveShareRequest: status=APPROVED, expiresAt=+30días
+  - rejectShareRequest: status=REJECTED
+  - share_requests añadido a lib/supabase/types.ts
+
+================================================================================
+  ESTADO DE CADA VISTA
+================================================================================
+
+VISTA                  ESTADO          NOTAS
+─────────────────────────────────────────────────────────────────────────────
+LoginView              ✅ LIVE          Supabase Auth, redirect a /dashboard
+DashboardView          ✅ LIVE          Stats reales: turnos, pacientes
+PatientsView           ✅ LIVE          Lista + búsqueda + refreshKey
+PatientDetailView      ✅ LIVE          HC + vitales + refreshKey consultas
+AppointmentsView       ✅ LIVE          Realtime subscription + acciones
+NewConsultationModal   ✅ LIVE          SOAP completo → medical_records
+NewPatientModal        ✅ LIVE          Crea en DB con server action
+NewAppointmentModal    ✅ LIVE          Dropdowns reales pacientes/doctores
+BillingView            ✅ LIVE          billing_items + status mapping
+AuditView              ✅ LIVE          audit_logs con join a users
+UsersView              ✅ LIVE          useTenantUsers + toggle activo
+InviteUserModal        ✅ LIVE          Crea Auth user + row en users
+SharingView            ✅ LIVE          share_requests + aprobar/rechazar
+CommandPalette         ✅ LIVE          Búsqueda debounced en Supabase
+AdminView              ✅ LIVE          Routing SUPER_ADMIN
+NotificationsPanel     ⏳ PENDIENTE     Aún usa MOCK_NOTIFICATIONS hardcoded
+InsuranceView          ⏳ PENDIENTE     Sin tabla real aún (no crítico)
+GuardsView             ⏳ PENDIENTE     Sin tabla real aún (no crítico)
+
+================================================================================
+  TAREAS PENDIENTES (por prioridad)
+================================================================================
+
+ALTA PRIORIDAD
+──────────────
+[ ] Wire NotificationsPanel a Supabase
+    - Mostrar turnos del día próximos (tipo "turno")
+    - Mostrar share_requests pendientes (tipo "solicitud")
+    - Tab filter funcional con estado (Todas / No leídas / Alertas)
+    - Mantener mock fallback cuando no hay tenantId
+
+[ ] Vercel Deploy
+    - El usuario debe ejecutar: vercel login (interactivo)
+    - Luego: vercel --prod
+    - Variables de entorno ya en vercel.json
+
+[ ] JWT Custom Hook en Supabase
+    - Dashboard → Authentication → Hooks
+    - Agregar public.custom_access_token_hook
+    - Necesario para que tenantId esté en el JWT
+
+MEDIA PRIORIDAD
+───────────────
+[ ] Editar paciente (EditPatientModal)
+    - Formulario con datos precargados
+    - updatePatient server action
+
+[ ] Revocar acceso en SharingView
+    - Botón "Revocar acceso" (APROBADO) conectado a revokeShareRequest
+
+[ ] Formulario Nueva Solicitud de Compartir
+    - Desde SharingView: crear nueva share_request
+    - Seleccionar paciente, institución destino, motivo
+
+[ ] InsuranceView con datos reales
+    - Tabla insurance_plans pendiente de crear en DB
+    - Asociar a patients.insurancePlanId
+
+[ ] GuardsView con datos reales
+    - Tabla guards/shifts pendiente de crear en DB
+
+BAJA PRIORIDAD / MEJORAS
+────────────────────────
+[ ] Notificaciones en tiempo real (Supabase Realtime)
+    - Canal para appointments + share_requests
+    - Badge en TopBar actualizado automáticamente
+
+[ ] Paginación en PatientsView
+    - .range(offset, offset+pageSize) en query
+
+[ ] Export PDF de Historia Clínica
+
+[ ] Módulo de Reportes / Analytics
+
+[ ] Tests E2E (Playwright)
+
+================================================================================
+  PATRONES TÉCNICOS CLAVE
+================================================================================
+
+DUAL-MODE DATA
+  Todas las vistas usan datos reales si tenantId existe, mock si no:
+    const isLive = !!tenantId;
+    const displayData = isLive ? dbData.map(transform) : MOCK_DATA;
+
+LIVE DB BADGE
+  Todas las vistas wired muestran:
+    {isLive && <span style="...green badge...">LIVE DB</span>}
+
+REFRESHKEY PATTERN
+  Para que un child refetch cuando el parent le indica:
+    // Parent: incrementa counter
+    setPatientsRefreshKey(k => k + 1);
+    // Child prop: refreshKey?: number
+    const prevKey = useRef(refreshKey);
+    useEffect(() => {
+      if (refreshKey !== prevKey.current) { prevKey.current = refreshKey; refetch(); }
+    }, [refreshKey]);
+
+SERVER ACTIONS
+  Todas las mutaciones van por app/actions/*.ts con "use server"
+  Importar en componentes client con: import { action } from "@/app/actions/..."
+
+COLUMNAS CAMELCASE
+  Prisma genera camelCase: tenantId, authId, scheduledAt, createdAt
+  NUNCA usar snake_case (tenant_id, auth_id, etc.)
+
+================================================================================
+  FIN DEL REPORTE
+================================================================================
