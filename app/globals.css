@@ -1,0 +1,178 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy: #0B1D35;
+  --navy-mid: #132540;
+  --navy-lt: #1E3A5F;
+  --teal: #00BFA6;
+  --teal-lt: #00D4B8;
+  --teal-dim: rgba(0, 191, 166, 0.12);
+  --blue: #2563EB;
+  --blue-lt: #3B82F6;
+  --blue-dim: rgba(37, 99, 235, 0.12);
+  --amber: #F59E0B;
+  --amber-dim: rgba(245, 158, 11, 0.12);
+  --red: #EF4444;
+  --red-dim: rgba(239, 68, 68, 0.1);
+  --green: #10B981;
+  --green-dim: rgba(16, 185, 129, 0.1);
+  --purple: #8B5CF6;
+  --purple-dim: rgba(139, 92, 246, 0.1);
+  --slate-50: #F8FAFC;
+  --slate-100: #F1F5F9;
+  --slate-200: #E2E8F0;
+  --slate-300: #CBD5E1;
+  --slate-400: #94A3B8;
+  --slate-500: #64748B;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1E293B;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--slate-100);
+  color: var(--slate-800);
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--slate-300);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--slate-400);
+}
+
+/* Command palette overlay */
+.cmd-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 29, 53, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 15vh;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.cmd-box {
+  width: 600px;
+  max-width: 90vw;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.08);
+  overflow: hidden;
+  animation: slideUp 0.18s ease-out;
+}
+
+/* Table hover */
+.tbl-row:hover {
+  background: var(--slate-50) !important;
+}
+
+/* Sidebar item hover */
+.nav-item:hover {
+  background: rgba(0, 191, 166, 0.08) !important;
+  color: var(--teal) !important;
+}
+
+/* Card hover */
+.card-hover:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+  transition: all 0.15s ease;
+}
+
+/* Timeline styles */
+.timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 0 2px currentColor;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.timeline-line {
+  width: 2px;
+  background: var(--slate-200);
+  margin: 0 auto;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Input focus */
+input:focus {
+  outline: none;
+}
+
+/* Transition defaults */
+button {
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+/* HC Timeline record expand */
+.hc-record {
+  transition: all 0.2s ease;
+}
+
+/* Tooltip */
+.tooltip {
+  position: relative;
+}
+.tooltip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--slate-800);
+  color: white;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.tooltip:hover::after {
+  opacity: 1;
+}

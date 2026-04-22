@@ -1,0 +1,826 @@
+// ============================================================
+// schema.prisma
+// HIS SaaS — Plataforma Clínica Multi-Tenant
+// Stack: Next.js 14 · Supabase (PostgreSQL) · Prisma · RLS
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────────────────────
+// ENUMS
+// ──────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN    // Creador de la plataforma — acceso global
+  TENANT_ADMIN   // Dueño de la clínica — rango 1
+  MEDICO         // Médico — HCE + agenda propia
+  RECEPCION      // Recepcionista — agenda global del tenant
+  FACTURACION    // Facturación — liquidaciones + nomencladores
+}
+
+enum TenantType {
+  CONSULTORIO
+  CLINICA
+  SANATORIO
+  HOSPITAL
+}
+
+enum TenantStatus {
+  TRIAL       // Período de prueba (30 días)
+  ACTIVE      // Suscripción activa
+  SUSPENDED   // Pago vencido
+  CANCELLED   // Cuenta dada de baja
+}
+
+enum TenantPlan {
+  STARTER     // 1 médico, 500 pacientes
+  PROFESSIONAL // 5 médicos, 5.000 pacientes
+  ENTERPRISE  // Ilimitado
+}
+
+enum Sex {
+  M
+  F
+  X
+}
+
+enum AppointmentStatus {
+  SCHEDULED    // Turno creado
+  CONFIRMED    // Paciente confirmó
+  IN_PROGRESS  // Consulta en curso
+  COMPLETED    // Finalizado, HCE creada
+  CANCELLED    // Cancelado
+  NO_SHOW      // El paciente no se presentó
+  RESCHEDULED  // Reprogramado (apunta al nuevo turno)
+}
+
+enum RecordEntryType {
+  CONSULTA
+  EVOLUCION
+  PROCEDIMIENTO
+  ESTUDIO_COMPLEMENTARIO
+  INTERCONSULTA
+  NOTA_ENFERMERIA
+  EPICRISIS
+}
+
+enum BillingStatus {
+  DRAFT       // Borrador
+  PENDING     // Pendiente de presentación
+  SUBMITTED   // Presentado a la obra social
+  APPROVED    // Aprobado
+  REJECTED    // Observado / rechazado
+  PAID        // Cobrado
+}
+
+enum InvoiceType {
+  A  // Responsable inscripto → responsable inscripto
+  B  // Responsable inscripto → consumidor final
+  C  // Monotributo
+  E  // Exportación de servicios
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING_AFIP   // Enviado a AFIP, esperando CAE
+  ISSUED         // CAE otorgado, comprobante emitido
+  CANCELLED      // Nota de crédito emitida
+}
+
+enum ShareStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  REVOKED
+}
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  EXPORT
+  SHARE_REQUEST
+  SHARE_APPROVE
+  SHARE_REVOKE
+  PASSWORD_CHANGE
+  PERMISSION_CHANGE
+}
+
+enum NotifChannel {
+  IN_APP
+  EMAIL
+  WHATSAPP
+}
+
+enum NotifType {
+  APPOINTMENT_REMINDER    // "Su turno es mañana"
+  APPOINTMENT_CONFIRMED   // "Su turno fue confirmado"
+  APPOINTMENT_CANCELLED
+  SHARE_REQUEST
+  LAB_RESULT_READY
+  BILLING_APPROVED
+  SYSTEM_ALERT
+}
+
+// ──────────────────────────────────────────────────────────────
+// TENANT  (el cliente — dueño de la clínica)
+// RLS: Solo SUPER_ADMIN puede SELECT/UPDATE tenants arbitrarios.
+//      Los usuarios ven únicamente su propio tenant.
+// ──────────────────────────────────────────────────────────────
+
+model Tenant {
+  id     String       @id @default(cuid())
+  slug   String       @unique          // URL-friendly: "clinica-san-martin"
+  name   String
+  type   TenantType
+  status TenantStatus @default(TRIAL)
+  plan   TenantPlan   @default(STARTER)
+
+  // Legal (Argentina)
+  cuit       String?   @unique
+  iibb       String?   // Ingresos Brutos
+  address    String?
+  city       String?
+  province   String?
+  postalCode String?
+  country    String    @default("AR")
+
+  // AFIP configuration
+  afipCert      String?   // Certificado X.509 (cifrado)
+  afipKey       String?   // Clave privada (cifrada)
+  afipPointSale Int?      // Punto de venta habilitado
+
+  // WhatsApp Business API
+  waBaId        String?   // Business Account ID
+  waPhoneId     String?   // Phone Number ID
+  waToken       String?   // Token (cifrado)
+
+  // Branding
+  logoUrl    String?
+  primaryColor String  @default("#00BFA6")
+
+  // Plan & billing
+  planExpiresAt  DateTime?
+  trialEndsAt    DateTime?
+
+  // Timestamps
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // ── Relations ──────────────────────────────────────────────
+  users                 User[]
+  patients              Patient[]
+  appointments          Appointment[]
+  specialties           Specialty[]
+  rooms                 ConsultingRoom[]
+  tenantInsurancePlans  TenantInsurancePlan[]
+  billingItems          BillingItem[]
+  invoices              Invoice[]
+  sentShareRequests     ShareRequest[]        @relation("SentShareRequests")
+  receivedShareRequests ShareRequest[]        @relation("ReceivedShareRequests")
+  auditLogs             AuditLog[]
+  notifications         Notification[]
+  medicalRecords        MedicalRecord[]
+  doctorSchedules       DoctorSchedule[]
+
+  @@map("tenants")
+}
+
+// ──────────────────────────────────────────────────────────────
+// USER  (staff del tenant)
+// RLS: tenant_id = current_setting('app.current_tenant_id')
+//      SUPER_ADMIN bypasses (using Supabase service_role key)
+// ──────────────────────────────────────────────────────────────
+
+model User {
+  id     String   @id @default(cuid())
+
+  // Supabase auth.users UUID — nunca nulo después de onboarding
+  authId String   @unique
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  role UserRole
+
+  // Profile
+  firstName  String
+  lastName   String
+  email      String
+  phone      String?
+  avatarUrl  String?
+
+  // Doctor-specific
+  specialty   String?
+  licenseNum  String?   // Matrícula médica
+  rnmDesc     String?   // Registro Nacional de Médicos
+
+  // Preferences
+  locale      String    @default("es-AR")
+  timezone    String    @default("America/Argentina/Buenos_Aires")
+
+  // Status
+  isActive    Boolean   @default(true)
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  // ── Relations ──────────────────────────────────────────────
+  ownedAppointments  Appointment[]    @relation("DoctorAppointments")
+  createdAppointments Appointment[]   @relation("CreatedByUser")
+  medicalRecords     MedicalRecord[]
+  auditLogs          AuditLog[]
+  notifications      Notification[]
+  schedules          DoctorSchedule[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([authId])
+  @@index([tenantId, role])
+  @@map("users")
+}
+
+// ──────────────────────────────────────────────────────────────
+// PATIENT
+// RLS: tenant_id = current_tenant — un mismo DNI puede existir
+//      en múltiples tenants sin cruzar datos.
+//      El intercambio cross-tenant se maneja vía ShareRequest.
+// ──────────────────────────────────────────────────────────────
+
+model Patient {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Identity
+  dni       String
+  cuil      String?
+  firstName String
+  lastName  String
+
+  // Demographics
+  birthDate DateTime?
+  sex       Sex?
+
+  // Contact
+  email     String?
+  phone     String?
+  phone2    String?
+  address   String?
+  city      String?
+  province  String?
+
+  // Medical
+  bloodType String?
+  allergies String?     // free text, futuro: tabla separada
+  notes     String?     // Observaciones generales
+
+  // Insurance
+  insurancePlanId String?
+  insurancePlan   InsurancePlan? @relation(fields: [insurancePlanId], references: [id])
+  affiliateNum    String?
+
+  // Emergency contact
+  emergencyContact String?
+  emergencyPhone   String?
+
+  // Status
+  isActive  Boolean   @default(true)
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // ── Relations ──────────────────────────────────────────────
+  appointments   Appointment[]
+  medicalRecords MedicalRecord[]
+  billingItems   BillingItem[]
+  shareRequests  ShareRequest[]
+
+  @@unique([tenantId, dni])
+  @@index([tenantId])
+  @@index([tenantId, lastName, firstName])
+  @@map("patients")
+}
+
+// ──────────────────────────────────────────────────────────────
+// SPECIALTY  (por tenant — cada clínica puede tener las suyas)
+// ──────────────────────────────────────────────────────────────
+
+model Specialty {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name    String
+  color   String  @default("#00BFA6")
+  isActive Boolean @default(true)
+
+  appointments   Appointment[]
+  medicalRecords MedicalRecord[]
+  schedules      DoctorSchedule[]
+
+  @@unique([tenantId, name])
+  @@map("specialties")
+}
+
+// ──────────────────────────────────────────────────────────────
+// CONSULTING ROOM  (consultorios físicos)
+// ──────────────────────────────────────────────────────────────
+
+model ConsultingRoom {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name     String    // "Consultorio 1", "Quirófano A"
+  floor    String?
+  isActive Boolean   @default(true)
+
+  appointments Appointment[]
+
+  @@unique([tenantId, name])
+  @@map("consulting_rooms")
+}
+
+// ──────────────────────────────────────────────────────────────
+// DOCTOR SCHEDULE  (disponibilidad semanal)
+// ──────────────────────────────────────────────────────────────
+
+model DoctorSchedule {
+  id         String  @id @default(cuid())
+  tenantId   String
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  doctorId   String
+  doctor     User    @relation(fields: [doctorId], references: [id])
+
+  specialtyId String?
+  specialty   Specialty? @relation(fields: [specialtyId], references: [id])
+
+  dayOfWeek   Int       // 0=Dom, 1=Lun ... 6=Sab
+  startTime   String    // "08:00"
+  endTime     String    // "16:00"
+  slotMins    Int       @default(30)  // duración por turno
+  isActive    Boolean   @default(true)
+
+  @@unique([tenantId, doctorId, dayOfWeek, startTime])
+  @@index([tenantId, doctorId])
+  @@map("doctor_schedules")
+}
+
+// ──────────────────────────────────────────────────────────────
+// APPOINTMENT  (turno)
+// RLS: tenant_id = current_tenant
+//      MEDICO: solo sus propios turnos (doctorId = current_user)
+//      RECEPCION/ADMIN: todos los turnos del tenant
+// ──────────────────────────────────────────────────────────────
+
+model Appointment {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+
+  doctorId  String
+  doctor    User   @relation("DoctorAppointments", fields: [doctorId], references: [id])
+
+  createdById String?
+  createdBy   User?   @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  specialtyId String?
+  specialty   Specialty? @relation(fields: [specialtyId], references: [id])
+
+  roomId String?
+  room   ConsultingRoom? @relation(fields: [roomId], references: [id])
+
+  // Timing
+  scheduledAt DateTime
+  durationMin Int       @default(30)
+  status      AppointmentStatus @default(SCHEDULED)
+
+  // Insurance
+  insurancePlanId String?
+  insurancePlan   InsurancePlan? @relation(fields: [insurancePlanId], references: [id])
+
+  // Clinical
+  chiefComplaint  String?
+  notes           String?
+
+  // Rescheduling
+  rescheduledFromId String?
+  rescheduledFrom   Appointment? @relation("RescheduledAppointments", fields: [rescheduledFromId], references: [id])
+  rescheduledTo     Appointment[] @relation("RescheduledAppointments")
+
+  // Cancellation
+  cancelledAt  DateTime?
+  cancelReason String?
+
+  // WhatsApp tracking
+  reminderSentAt     DateTime?
+  confirmationSentAt DateTime?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ── Relations ──────────────────────────────────────────────
+  medicalRecord MedicalRecord?
+  billingItem   BillingItem?
+
+  @@index([tenantId])
+  @@index([tenantId, scheduledAt])
+  @@index([tenantId, doctorId, scheduledAt])
+  @@index([tenantId, patientId])
+  @@index([tenantId, status])
+  @@map("appointments")
+}
+
+// ──────────────────────────────────────────────────────────────
+// MEDICAL RECORD  (Historia Clínica Electrónica)
+// RLS: tenant_id = current_tenant
+//      isConfidential = true → solo el autor y TENANT_ADMIN
+//      MEDICO: solo puede escribir/leer sus propios registros
+//              (excepto interconsultas aprobadas)
+// ──────────────────────────────────────────────────────────────
+
+model MedicalRecord {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+
+  // 1:1 con el turno (puede existir sin turno — "espontáneo")
+  appointmentId String?   @unique
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  specialtyId String?
+  specialty   Specialty? @relation(fields: [specialtyId], references: [id])
+
+  entryType RecordEntryType @default(CONSULTA)
+
+  // SOAP (Subjective / Objective / Assessment / Plan)
+  subjective String?    // Anamnesis, motivo de consulta
+  objective  String?    // Examen físico, hallazgos
+  assessment String?    // Impresión diagnóstica, CIE-10
+  plan       String?    // Plan terapéutico, indicaciones
+
+  // Diagnóstico estructurado
+  diagnosisCie10   String?   // "I10" — CIE-10 code
+  diagnosisFreeText String?  // Texto libre adicional
+  treatment        String?
+
+  // ── Signos Vitales (columnas nativas para queries/trends) ──
+  vitalsBpSystolic  Int?      // mmHg
+  vitalsBpDiastolic Int?      // mmHg
+  vitalsHrBpm       Int?      // lpm
+  vitalsTempC       Decimal?  @db.Decimal(4, 1)  // °C
+  vitalsWeightKg    Decimal?  @db.Decimal(5, 2)  // kg
+  vitalsHeightCm    Decimal?  @db.Decimal(5, 1)  // cm
+  vitalsBmiCalc     Decimal?  @db.Decimal(4, 1)  // auto: peso/talla²
+  vitalsO2Pct       Decimal?  @db.Decimal(4, 1)  // SpO2 %
+
+  // Flags
+  isConfidential Boolean @default(false)
+  version        Int     @default(1)
+
+  // Timestamps
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // ── Relations ──────────────────────────────────────────────
+  attachments   Attachment[]
+  shareRequests ShareRequest[]
+
+  @@index([tenantId])
+  @@index([tenantId, patientId])
+  @@index([tenantId, patientId, createdAt])
+  @@index([tenantId, authorId])
+  @@map("medical_records")
+}
+
+// ──────────────────────────────────────────────────────────────
+// ATTACHMENT  (archivos adjuntos a la HCE — Supabase Storage)
+// ──────────────────────────────────────────────────────────────
+
+model Attachment {
+  id              String        @id @default(cuid())
+  medicalRecordId String
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+
+  // Supabase Storage
+  bucket      String    // "medical-records"
+  storagePath String    // "tenant_id/patient_id/file_uuid.pdf"
+  fileName    String    // nombre original
+  fileSize    Int       // bytes
+  mimeType    String    // "application/pdf", "image/jpeg"
+  description String?
+
+  uploadedAt DateTime @default(now())
+
+  @@index([medicalRecordId])
+  @@map("attachments")
+}
+
+// ──────────────────────────────────────────────────────────────
+// INSURANCE COMPANY  (obras sociales — catálogo global)
+// Sin tenant_id — datos compartidos (sin RLS)
+// ──────────────────────────────────────────────────────────────
+
+model InsuranceCompany {
+  id   String @id @default(cuid())
+  name String @unique
+  code String @unique
+  rnos String? @unique  // Registro Nacional de Obras Sociales
+
+  plans         InsurancePlan[]
+  nomenclatures Nomenclature[]
+
+  @@map("insurance_companies")
+}
+
+// ──────────────────────────────────────────────────────────────
+// INSURANCE PLAN  (planes: OSDE 410, OSDE 210, PAMI, etc.)
+// ──────────────────────────────────────────────────────────────
+
+model InsurancePlan {
+  id        String          @id @default(cuid())
+  companyId String
+  company   InsuranceCompany @relation(fields: [companyId], references: [id])
+
+  name     String
+  code     String
+  isActive Boolean @default(true)
+
+  // Relations
+  patients     Patient[]
+  appointments Appointment[]
+  tenantLinks  TenantInsurancePlan[]
+  billingItems BillingItem[]
+
+  @@unique([companyId, code])
+  @@map("insurance_plans")
+}
+
+// Contratos del tenant con obras sociales
+model TenantInsurancePlan {
+  tenantId        String
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  insurancePlanId String
+  insurancePlan   InsurancePlan @relation(fields: [insurancePlanId], references: [id])
+
+  isActive     Boolean  @default(true)
+  contractedAt DateTime @default(now())
+
+  @@id([tenantId, insurancePlanId])
+  @@map("tenant_insurance_plans")
+}
+
+// ──────────────────────────────────────────────────────────────
+// NOMENCLATURE  (prácticas médicas + valores por obra social)
+// Catálogo global + override por tenant (futuro)
+// ──────────────────────────────────────────────────────────────
+
+model Nomenclature {
+  id        String          @id @default(cuid())
+  companyId String
+  company   InsuranceCompany @relation(fields: [companyId], references: [id])
+
+  code        String    // "040101"
+  description String    // "Consulta médica general"
+  unit        String    @default("UM")
+  valueArs    Decimal   @db.Decimal(12, 2)   // Valor en pesos ARS
+
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+
+  billingItems BillingItem[]
+
+  @@unique([companyId, code, effectiveFrom])
+  @@index([companyId, code])
+  @@map("nomenclatures")
+}
+
+// ──────────────────────────────────────────────────────────────
+// BILLING ITEM  (prestación facturada)
+// RLS: tenant_id = current_tenant
+//      FACTURACION: full access
+//      MEDICO: read-only sus propias prestaciones
+//      RECEPCION: no access
+// ──────────────────────────────────────────────────────────────
+
+model BillingItem {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  patientId String?
+  patient   Patient? @relation(fields: [patientId], references: [id])
+
+  appointmentId String?   @unique
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+
+  insurancePlanId String?
+  insurancePlan   InsurancePlan? @relation(fields: [insurancePlanId], references: [id])
+
+  nomenclatureId String?
+  nomenclature   Nomenclature? @relation(fields: [nomenclatureId], references: [id])
+
+  // Item
+  description String
+  quantity    Int       @default(1)
+  unitValue   Decimal   @db.Decimal(12, 2)
+  totalValue  Decimal   @db.Decimal(12, 2)
+
+  status BillingStatus @default(DRAFT)
+
+  // AFIP
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+
+  serviceDate DateTime
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, serviceDate])
+  @@index([tenantId, status])
+  @@index([tenantId, insurancePlanId])
+  @@map("billing_items")
+}
+
+// ──────────────────────────────────────────────────────────────
+// INVOICE  (comprobante AFIP — CAE)
+// ──────────────────────────────────────────────────────────────
+
+model Invoice {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  type        InvoiceType
+  pointOfSale Int           // Punto de venta AFIP
+  number      Int           // Número de comprobante
+  cae         String?       // Código de Autorización Electrónica
+  caeExpiry   DateTime?
+
+  // Totales
+  subtotal Decimal @db.Decimal(12, 2)
+  iva      Decimal @db.Decimal(12, 2) @default(0)
+  total    Decimal @db.Decimal(12, 2)
+
+  status   InvoiceStatus @default(DRAFT)
+  issuedAt DateTime?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  billingItems BillingItem[]
+
+  @@unique([tenantId, type, pointOfSale, number])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("invoices")
+}
+
+// ──────────────────────────────────────────────────────────────
+// SHARE REQUEST  (interconsulta — acceso cross-tenant controlado)
+// RLS: fromTenantId = current_tenant  (puede solicitar)
+//      toTenantId   = current_tenant  (puede aprobar/rechazar)
+//      Solo MEDICO y TENANT_ADMIN pueden aprobar
+// ──────────────────────────────────────────────────────────────
+
+model ShareRequest {
+  id String @id @default(cuid())
+
+  fromTenantId String
+  fromTenant   Tenant @relation("SentShareRequests",     fields: [fromTenantId], references: [id])
+  toTenantId   String
+  toTenant     Tenant @relation("ReceivedShareRequests", fields: [toTenantId],   references: [id])
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+
+  recordId String?
+  record   MedicalRecord? @relation(fields: [recordId], references: [id])
+
+  requestedById String
+  reason        String
+  status        ShareStatus @default(PENDING)
+
+  // Acceso temporal
+  expiresAt    DateTime?  // null = hasta revocación
+  approvedAt   DateTime?
+  approvedById String?
+  revokedAt    DateTime?
+  revokedById  String?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fromTenantId])
+  @@index([toTenantId])
+  @@index([patientId])
+  @@index([status])
+  @@map("share_requests")
+}
+
+// ──────────────────────────────────────────────────────────────
+// AUDIT LOG  (registro forense — INMUTABLE)
+// RLS: tenant_id = current_tenant — solo lectura
+//      SUPER_ADMIN: acceso global
+//      Escrito únicamente via service_role (server-side)
+// ──────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])  // SIN CASCADE
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  action     AuditAction
+  resource   String       // "MedicalRecord", "Patient", etc.
+  resourceId String?
+
+  // Diff de cambios (JSON estructurado)
+  oldValues Json?
+  newValues Json?
+
+  ipAddress String?
+  userAgent String?
+
+  // Solo createdAt — sin updatedAt — es INMUTABLE
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, userId])
+  @@index([tenantId, resource, resourceId])
+  @@map("audit_logs")
+}
+
+// ──────────────────────────────────────────────────────────────
+// NOTIFICATION  (in-app + email + WhatsApp)
+// ──────────────────────────────────────────────────────────────
+
+model Notification {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  type    NotifType
+  channel NotifChannel @default(IN_APP)
+
+  title     String
+  body      String
+  actionUrl String?
+  metadata  Json?    // datos adicionales para el frontend
+
+  // Estado
+  isRead      Boolean   @default(false)
+  readAt      DateTime?
+
+  // Delivery tracking
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  failedAt    DateTime?
+  failReason  String?
+
+  // Referencia al objeto que originó la notificación
+  referenceType String?   // "Appointment", "ShareRequest", etc.
+  referenceId   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, userId, isRead])
+  @@index([tenantId, userId, createdAt])
+  @@map("notifications")
+}
