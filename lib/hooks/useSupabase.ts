@@ -90,21 +90,21 @@ export function useMedicalRecords(patientId: string | null) {
   const [records, setRecords] = useState<Tables<"medical_records">[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const fetch = useCallback(async () => {
     if (!patientId) return;
     setLoading(true);
-    supabase
+    const { data } = await supabase
       .from("medical_records")
       .select("*")
       .eq("patientId", patientId)
-      .order("createdAt", { ascending: false })
-      .then(({ data }) => {
-        setRecords((data as any) ?? []);
-        setLoading(false);
-      });
+      .order("createdAt", { ascending: false });
+    setRecords((data as any) ?? []);
+    setLoading(false);
   }, [patientId]);
 
-  return { records, loading };
+  useEffect(() => { fetch(); }, [fetch]);
+
+  return { records, loading, refetch: fetch };
 }
 
 // ── Tenant users hook ──────────────────────────────────────────

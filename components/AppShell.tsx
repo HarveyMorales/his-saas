@@ -51,6 +51,7 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
   const [newPatientOpen, setNewPatientOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [patientsRefreshKey, setPatientsRefreshKey] = useState(0);
+  const [consultationRefreshKey, setConsultationRefreshKey] = useState(0);
 
   const keySeqRef = useRef<string>("");
   const seqTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -195,6 +196,7 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
             onBack={() => setSelectedPatient(null)}
             onNav={handleNav}
             onNewConsultation={() => setNewConsultationOpen(true)}
+            consultationRefreshKey={consultationRefreshKey}
           />
         );
       }
@@ -229,7 +231,7 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
         <NewConsultationModal
           patient={selectedPatient}
           onClose={() => setNewConsultationOpen(false)}
-          onSaved={() => setNewConsultationOpen(false)}
+          onSaved={() => { setNewConsultationOpen(false); setConsultationRefreshKey(k => k + 1); }}
         />
       )}
       {newPatientOpen && (

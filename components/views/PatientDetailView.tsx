@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Share2, Plus, ChevronDown, ChevronUp, Lock, FileText, Calendar, CreditCard, Paperclip, Activity, Pill, AlertTriangle } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
@@ -15,6 +15,7 @@ interface PatientDetailViewProps {
   onBack: () => void;
   onNav: (id: NavId) => void;
   onNewConsultation?: () => void;
+  consultationRefreshKey?: number;
 }
 
 type Tab = "hc" | "turnos" | "facturacion" | "adjuntos";
@@ -61,11 +62,19 @@ function toMedicalRecord(r: any): MedicalRecord {
   };
 }
 
-export function PatientDetailView({ patient, onBack, onNav, onNewConsultation }: PatientDetailViewProps) {
+export function PatientDetailView({ patient, onBack, onNav, onNewConsultation, consultationRefreshKey }: PatientDetailViewProps) {
   const [activeTab, setActiveTab] = useState<Tab>("hc");
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
 
-  const { records: dbRecords, loading: recordsLoading } = useMedicalRecords(patient.id);
+  const { records: dbRecords, loading: recordsLoading, refetch: refetchRecords } = useMedicalRecords(patient.id);
+
+  const prevRefreshKey = useRef(consultationRefreshKey);
+  useEffect(() => {
+    if (consultationRefreshKey !== prevRefreshKey.current) {
+      prevRefreshKey.current = consultationRefreshKey;
+      refetchRecords();
+    }
+  }, [consultationRefreshKey, refetchRecords]);
   const mockRecords = RECORDS[patient.id] ?? [];
   const records: MedicalRecord[] = dbRecords.length > 0
     ? dbRecords.map(toMedicalRecord)
