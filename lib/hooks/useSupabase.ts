@@ -107,6 +107,30 @@ export function useMedicalRecords(patientId: string | null) {
   return { records, loading };
 }
 
+// ── Doctors hook ───────────────────────────────────────────────
+export function useDoctors(tenantId: string | null) {
+  const [doctors, setDoctors] = useState<Tables<"users">[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    setLoading(true);
+    supabase
+      .from("users")
+      .select("*")
+      .eq("tenantId", tenantId)
+      .eq("role", "MEDICO" as any)
+      .eq("isActive", true)
+      .order("lastName")
+      .then(({ data }) => {
+        setDoctors((data as any) ?? []);
+        setLoading(false);
+      });
+  }, [tenantId]);
+
+  return { doctors, loading };
+}
+
 // ── Realtime appointments subscription ─────────────────────────
 export function useRealtimeAppointments(tenantId: string | null, onUpdate: () => void) {
   useEffect(() => {

@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { APPOINTMENTS, GUARDS, HC_SHARE_REQUESTS } from "@/lib/data";
+import { useCurrentUser, useAppointments, usePatients } from "@/lib/hooks/useSupabase";
 import type { Institution, NavId } from "@/lib/types";
 import { TrendingUp, Users, Calendar, Activity, DollarSign, AlertTriangle, ChevronRight } from "lucide-react";
 
@@ -12,15 +14,52 @@ interface DashboardViewProps {
   onNav: (id: NavId) => void;
 }
 
-const STATS = [
-  { label: "Pacientes activos", value: "1,284", delta: "+12 hoy", icon: <Users size={18} />, color: "#00BFA6", data: [30,45,38,60,52,72,65,82,75,92] },
-  { label: "Turnos hoy", value: "47", delta: "8 pendientes", icon: <Calendar size={18} />, color: "#2563EB", data: [20,35,25,50,40,65,55,75,68,85] },
-  { label: "Guardias activas", value: "3", delta: "2 médicos en turno", icon: <Activity size={18} />, color: "#F59E0B", data: [1,2,1,3,2,3,2,4,3,3] },
-  { label: "Facturación mes", value: "$284.5K", delta: "+18% vs ant.", icon: <DollarSign size={18} />, color: "#8B5CF6", data: [60,75,65,85,70,90,82,95,88,100] },
-];
-
 export function DashboardView({ institution, onNav }: DashboardViewProps) {
   const today = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const todayISO = new Date().toISOString().split("T")[0];
+
+  const { profile } = useCurrentUser();
+  const tenantId = (profile as any)?.tenantId ?? null;
+  const isLive = !!tenantId;
+
+  const { appointments: dbAppts, loading: apptLoading } = useAppointments(tenantId, todayISO);
+  const { patients: dbPatients, loading: patientsLoading } = usePatients(tenantId);
+
+  const apptCount = isLive ? dbAppts.length : APPOINTMENTS.length;
+  const patientCount = isLive ? dbPatients.length : 1284;
+  const pendingAppts = isLive
+    ? dbAppts.filter((a: any) => a.status === "SCHEDULED").length
+    : APPOINTMENTS.filter(a => a.status === "PENDIENTE").length;
+
+  const STATS = [
+    { label: "Pacientes activos", value: patientsLoading ? "…" : patientCount.toLocaleString(), delta: "registrados", icon: <Users size={18} />, color: "#00BFA6", data: [30,45,38,60,52,72,65,82,75,92] },
+    { label: "Turnos hoy", value: apptLoading ? "…" : String(apptCount), delta: `${pendingAppts} pendientes`, icon: <Calendar size={18} />, color: "#2563EB", data: [20,35,25,50,40,65,55,75,68,85] },
+    { label: "Guardias activas", value: "3", delta: "2 médicos en turno", icon: <Activity size={18} />, color: "#F59E0B", data: [1,2,1,3,2,3,2,4,3,3] },
+    { label: "Facturación mes", value: "$284.5K", delta: "+18% vs ant.", icon: <DollarSign size={18} />, color: "#8B5CF6", data: [60,75,65,85,70,90,82,95,88,100] },
+  ];
+
+  // For appointments table: show real data when live
+  const STATUS_LABEL: Record<string, string> = {
+    SCHEDULED: "PENDIENTE",
+    IN_PROGRESS: "EN CURSO",
+    COMPLETED: "CONFIRMADO",
+    CANCELLED: "CANCELADO",
+    CONFIRMED: "CONFIRMADO",
+    NO_SHOW: "CANCELADO",
+    RESCHEDULED: "PENDIENTE",
+  };
+
+  const displayAppts = isLive
+    ? dbAppts.slice(0, 7).map((a: any) => ({
+        id: a.id,
+        time: a.scheduledAt ? new Date(a.scheduledAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—",
+        patient: a.patients ? `${a.patients.lastName}, ${a.patients.firstName}` : "—",
+        doctor: a.users ? `${a.users.firstName} ${a.users.lastName}` : "—",
+        specialty: a.users?.specialty ?? "—",
+        obra: "Particular",
+        status: STATUS_LABEL[a.status] ?? "PENDIENTE",
+      }))
+    : APPOINTMENTS.slice(0, 7);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
@@ -29,8 +68,13 @@ export function DashboardView({ institution, onNav }: DashboardViewProps) {
         <h1 style={{ margin: 0, fontFamily: "Georgia, serif", fontSize: 26, fontWeight: 700, color: "var(--navy)", letterSpacing: -0.5 }}>
           Dashboard General
         </h1>
-        <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--slate-500)", textTransform: "capitalize" }}>
+        <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--slate-500)", textTransform: "capitalize", display: "flex", alignItems: "center", gap: 8 }}>
           {today} · {institution?.name ?? "Seleccioná institución"}
+          {isLive && (
+            <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: "rgba(16,185,129,0.1)", color: "#059669" }}>
+              LIVE DB
+            </span>
+          )}
         </p>
       </div>
 
@@ -88,7 +132,7 @@ export function DashboardView({ institution, onNav }: DashboardViewProps) {
                 Próximos turnos
               </div>
               <div style={{ fontSize: 12, color: "var(--slate-500)", marginTop: 2 }}>
-                {APPOINTMENTS.length} turnos programados hoy
+                {apptLoading ? "Cargando..." : `${apptCount} turnos programados hoy`}
               </div>
             </div>
             <button
@@ -98,38 +142,46 @@ export function DashboardView({ institution, onNav }: DashboardViewProps) {
               + Nuevo
             </button>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
-            <thead>
-              <tr style={{ background: "var(--slate-50)" }}>
-                {["Hora", "Paciente", "Profesional", "Especialidad", "Obra Social", "Estado"].map(h => (
-                  <th key={h} style={{ padding: "9px 14px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--slate-500)", letterSpacing: 0.6, textTransform: "uppercase", borderBottom: "1px solid var(--slate-200)" }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {APPOINTMENTS.slice(0, 7).map((a, i) => (
-                <tr
-                  key={i}
-                  className="tbl-row"
-                  style={{
-                    borderBottom: "1px solid var(--slate-100)",
-                    background: a.status === "EN CURSO" ? "#EFF6FF" : "transparent",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => onNav("appointments")}
-                >
-                  <td style={{ padding: "10px 14px", fontWeight: 700, color: "var(--navy)", fontFamily: "Georgia, serif" }}>{a.time}</td>
-                  <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--slate-800)" }}>{a.patient}</td>
-                  <td style={{ padding: "10px 14px", color: "var(--slate-600)" }}>{a.doctor}</td>
-                  <td style={{ padding: "10px 14px", color: "var(--slate-500)", fontSize: 12 }}>{a.specialty}</td>
-                  <td style={{ padding: "10px 14px", color: "var(--slate-500)", fontSize: 11 }}>{a.obra}</td>
-                  <td style={{ padding: "10px 14px" }}><Badge status={a.status} /></td>
+          {apptLoading ? (
+            <div style={{ padding: "30px", textAlign: "center", color: "var(--slate-400)", fontSize: 13 }}>Cargando...</div>
+          ) : displayAppts.length === 0 ? (
+            <div style={{ padding: "30px", textAlign: "center", color: "var(--slate-400)", fontSize: 13 }}>
+              No hay turnos para hoy
+            </div>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+              <thead>
+                <tr style={{ background: "var(--slate-50)" }}>
+                  {["Hora", "Paciente", "Profesional", "Especialidad", "Obra Social", "Estado"].map(h => (
+                    <th key={h} style={{ padding: "9px 14px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--slate-500)", letterSpacing: 0.6, textTransform: "uppercase", borderBottom: "1px solid var(--slate-200)" }}>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {displayAppts.map((a, i) => (
+                  <tr
+                    key={a.id ?? i}
+                    className="tbl-row"
+                    style={{
+                      borderBottom: "1px solid var(--slate-100)",
+                      background: a.status === "EN CURSO" ? "#EFF6FF" : "transparent",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => onNav("appointments")}
+                  >
+                    <td style={{ padding: "10px 14px", fontWeight: 700, color: "var(--navy)", fontFamily: "Georgia, serif" }}>{a.time}</td>
+                    <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--slate-800)" }}>{a.patient}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--slate-600)" }}>{a.doctor}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--slate-500)", fontSize: 12 }}>{a.specialty}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--slate-500)", fontSize: 11 }}>{a.obra}</td>
+                    <td style={{ padding: "10px 14px" }}><Badge status={a.status as any} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Right column */}

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Check } from "lucide-react";
 import { useToast } from "@/lib/toast-context";
 import { PATIENTS } from "@/lib/data";
+import { useCurrentUser, usePatients, useDoctors } from "@/lib/hooks/useSupabase";
+import { createAppointment } from "@/app/actions/appointments";
 
 const SPECIALTIES = [
   "Clínica Médica", "Cardiología", "Ginecología", "Pediatría",
@@ -11,7 +13,7 @@ const SPECIALTIES = [
   "Gastroenterología", "Neumología", "Laboratorio", "Control",
 ];
 
-const DOCTORS = [
+const MOCK_DOCTORS = [
   "Dr. Juan Rodríguez", "Dra. Marta Vidal", "Dr. Luis Campos",
   "Dra. Ana Fernández", "Dr. Carlos Romero",
 ];
@@ -29,36 +31,69 @@ interface NewAppointmentModalProps {
 
 export function NewAppointmentModal({ onClose, onSaved }: NewAppointmentModalProps) {
   const { toast } = useToast();
+  const { profile } = useCurrentUser();
+  const tenantId = (profile as any)?.tenantId ?? null;
+  const isLive = !!tenantId;
+
+  const { patients: dbPatients } = usePatients(tenantId);
+  const { doctors: dbDoctors } = useDoctors(tenantId);
+
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     patientId: "",
-    doctor: "",
+    doctorId: "",
     specialty: "",
     date: new Date().toISOString().slice(0, 10),
     time: "09:00",
     duration: "30",
-    obra: "",
     notes: "",
   });
 
   const set = (k: keyof typeof form, v: string) =>
     setForm(prev => ({ ...prev, [k]: v }));
 
-  const selectedPatient = PATIENTS.find(p => p.id === form.patientId);
-  const canSave = form.patientId && form.doctor && form.specialty && form.time;
+  const canSave = form.patientId && form.doctorId && form.specialty && form.time;
 
-  const handleSave = () => {
+  const selectedPatient = isLive
+    ? dbPatients.find((p: any) => p.id === form.patientId)
+    : PATIENTS.find(p => p.id === form.patientId);
+
+  const selectedDoctor = isLive
+    ? dbDoctors.find((d: any) => d.id === form.doctorId)
+    : null;
+
+  const patientLabel = isLive && selectedPatient
+    ? `${(selectedPatient as any).lastName}, ${(selectedPatient as any).firstName}`
+    : (selectedPatient as any)?.name ?? "";
+
+  const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      toast({
-        type: "success",
-        title: "Turno creado",
-        message: `${selectedPatient?.name} — ${form.time} con ${form.doctor}`,
+    if (isLive) {
+      const scheduledAt = `${form.date}T${form.time}:00`;
+      const { error } = await createAppointment({
+        patientId: form.patientId,
+        doctorId: form.doctorId,
+        scheduledAt,
+        durationMin: Number(form.duration),
+        notes: form.notes || null,
       });
-      onSaved?.();
-      onClose();
-    }, 600);
+      setSaving(false);
+      if (error) {
+        toast({ type: "error", title: "Error al guardar", message: error });
+      } else {
+        const docName = selectedDoctor ? `${(selectedDoctor as any).firstName} ${(selectedDoctor as any).lastName}` : form.doctorId;
+        toast({ type: "success", title: "Turno creado", message: `${patientLabel} — ${form.time} con ${docName}` });
+        onSaved?.();
+        onClose();
+      }
+    } else {
+      setTimeout(() => {
+        setSaving(false);
+        toast({ type: "success", title: "Turno creado", message: `${patientLabel} — ${form.time}` });
+        onSaved?.();
+        onClose();
+      }, 600);
+    }
   };
 
   return (
@@ -84,7 +119,9 @@ export function NewAppointmentModal({ onClose, onSaved }: NewAppointmentModalPro
         <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid var(--slate-100)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h2 style={{ margin: 0, fontFamily: "Georgia, serif", fontSize: 18, fontWeight: 700, color: "var(--navy)" }}>Nuevo Turno</h2>
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--slate-500)" }}>Agendar consulta médica</p>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--slate-500)" }}>
+              Agendar consulta médica{isLive && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: "rgba(16,185,129,0.1)", color: "#059669" }}>LIVE DB</span>}
+            </p>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--slate-400)", fontSize: 20 }}>×</button>
         </div>
@@ -97,7 +134,10 @@ export function NewAppointmentModal({ onClose, onSaved }: NewAppointmentModalPro
             </label>
             <select value={form.patientId} onChange={e => set("patientId", e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
               <option value="">Seleccionar paciente...</option>
-              {PATIENTS.map(p => <option key={p.id} value={p.id}>{p.name} — DNI {p.dni}</option>)}
+              {isLive
+                ? dbPatients.map((p: any) => <option key={p.id} value={p.id}>{p.lastName}, {p.firstName} — DNI {p.dni}</option>)
+                : PATIENTS.map(p => <option key={p.id} value={p.id}>{p.name} — DNI {p.dni}</option>)
+              }
             </select>
           </div>
 
@@ -106,9 +146,12 @@ export function NewAppointmentModal({ onClose, onSaved }: NewAppointmentModalPro
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--slate-500)", letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 6 }}>
                 Profesional <span style={{ color: "var(--red)" }}>*</span>
               </label>
-              <select value={form.doctor} onChange={e => set("doctor", e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+              <select value={form.doctorId} onChange={e => set("doctorId", e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
                 <option value="">Seleccionar...</option>
-                {DOCTORS.map(d => <option key={d} value={d}>{d}</option>)}
+                {isLive
+                  ? dbDoctors.map((d: any) => <option key={d.id} value={d.id}>{d.firstName} {d.lastName}{d.specialty ? ` — ${d.specialty}` : ""}</option>)
+                  : MOCK_DOCTORS.map(d => <option key={d} value={d}>{d}</option>)
+                }
               </select>
             </div>
             <div>
@@ -138,13 +181,6 @@ export function NewAppointmentModal({ onClose, onSaved }: NewAppointmentModalPro
               </select>
             </div>
           </div>
-
-          {selectedPatient && (
-            <div>
-              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--slate-500)", letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 6 }}>Obra Social</label>
-              <input value={selectedPatient.obra} readOnly style={{ ...inputStyle, background: "var(--slate-100)", color: "var(--slate-500)", cursor: "default" }} />
-            </div>
-          )}
 
           <div>
             <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--slate-500)", letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 6 }}>Notas</label>
