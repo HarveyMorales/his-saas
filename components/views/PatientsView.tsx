@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Search, Plus, Filter, RefreshCw } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { useCurrentUser, usePatients } from "@/lib/hooks/useSupabase";
@@ -10,6 +10,7 @@ import type { Patient } from "@/lib/types";
 interface PatientsViewProps {
   onSelectPatient: (p: Patient) => void;
   onNewPatient?: () => void;
+  refreshKey?: number;
 }
 
 // Maps Supabase patient row → mock Patient type for compatibility
@@ -32,11 +33,20 @@ function toMockPatient(p: any): Patient {
   };
 }
 
-export function PatientsView({ onSelectPatient, onNewPatient }: PatientsViewProps) {
+export function PatientsView({ onSelectPatient, onNewPatient, refreshKey }: PatientsViewProps) {
   const [search, setSearch] = useState("");
   const { profile, loading: profileLoading } = useCurrentUser();
   const tenantId = (profile as any)?.tenantId ?? null;
   const { patients: dbPatients, loading: patientsLoading, refetch } = usePatients(tenantId, search);
+
+  // Refetch when parent signals a new patient was created
+  const prevRefreshKey = useRef(refreshKey);
+  useEffect(() => {
+    if (refreshKey !== prevRefreshKey.current) {
+      prevRefreshKey.current = refreshKey;
+      refetch();
+    }
+  }, [refreshKey, refetch]);
 
   // Use real data if connected, fallback to mock
   const allPatients: Patient[] = useMemo(() => {
