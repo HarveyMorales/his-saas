@@ -16,6 +16,9 @@ export type TenantStatus = "TRIAL" | "ACTIVE" | "SUSPENDED" | "CANCELLED";
 export type AppointmentStatus = "SCHEDULED" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW" | "RESCHEDULED";
 export type BillingStatus = "DRAFT" | "PENDING" | "SUBMITTED" | "APPROVED" | "REJECTED" | "PAID";
 export type ShareStatus = "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "REVOKED";
+export type BedStatus = "AVAILABLE" | "OCCUPIED" | "MAINTENANCE" | "RESERVED";
+export type AdmissionStatus = "ACTIVE" | "DISCHARGED" | "CANCELLED";
+export type CoveragePlanStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 
 export interface Database {
   public: {
@@ -358,6 +361,228 @@ export interface Database {
           createdAt?: string;
         };
         Update: never;
+        Relationships: [];
+      };
+      insurance_providers: {
+        Row: {
+          id: string;
+          tenantId: string;
+          name: string;
+          code: string | null;
+          description: string | null;
+          isActive: boolean;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          tenantId: string;
+          name: string;
+          code?: string | null;
+          description?: string | null;
+          isActive?: boolean;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["insurance_providers"]["Insert"]>;
+        Relationships: [];
+      };
+      nomenclators: {
+        Row: {
+          id: string;
+          tenantId: string;
+          insuranceProviderId: string;
+          name: string;
+          version: string | null;
+          isActive: boolean;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          tenantId: string;
+          insuranceProviderId: string;
+          name: string;
+          version?: string | null;
+          isActive?: boolean;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["nomenclators"]["Insert"]>;
+        Relationships: [];
+      };
+      medical_practices: {
+        Row: {
+          id: string;
+          tenantId: string;
+          nomenclatorId: string;
+          code: string;
+          name: string;
+          description: string | null;
+          defaultValue: number;
+          isActive: boolean;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          tenantId: string;
+          nomenclatorId: string;
+          code: string;
+          name: string;
+          description?: string | null;
+          defaultValue?: number;
+          isActive?: boolean;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["medical_practices"]["Insert"]>;
+        Relationships: [];
+      };
+      patient_coverages: {
+        Row: {
+          id: string;
+          tenantId: string;
+          patientId: string;
+          insuranceProviderId: string;
+          affiliateNumber: string | null;
+          planName: string | null;
+          status: string;
+          isPrimary: boolean;
+          validFrom: string | null;
+          validUntil: string | null;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          tenantId: string;
+          patientId: string;
+          insuranceProviderId: string;
+          affiliateNumber?: string | null;
+          planName?: string | null;
+          status?: string;
+          isPrimary?: boolean;
+          validFrom?: string | null;
+          validUntil?: string | null;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["patient_coverages"]["Insert"]>;
+        Relationships: [];
+      };
+      invoices: {
+        Row: {
+          id: string;
+          tenantId: string;
+          patientId: string | null;
+          insuranceProviderId: string | null;
+          number: string | null;
+          status: BillingStatus;
+          subtotal: number;
+          total: number;
+          notes: string | null;
+          issuedAt: string | null;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          tenantId: string;
+          patientId?: string | null;
+          insuranceProviderId?: string | null;
+          number?: string | null;
+          status?: BillingStatus;
+          subtotal?: number;
+          total?: number;
+          notes?: string | null;
+          issuedAt?: string | null;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["invoices"]["Insert"]>;
+        Relationships: [];
+      };
+      invoice_items: {
+        Row: {
+          id: string;
+          tenantId: string;
+          invoiceId: string;
+          medicalPracticeId: string | null;
+          quantity: number;
+          unitPrice: number;
+          totalPrice: number;
+          description: string | null;
+          createdAt: string;
+        };
+        Insert: {
+          id?: string;
+          tenantId: string;
+          invoiceId: string;
+          medicalPracticeId?: string | null;
+          quantity?: number;
+          unitPrice: number;
+          totalPrice: number;
+          description?: string | null;
+          createdAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["invoice_items"]["Insert"]>;
+        Relationships: [];
+      };
+      beds: {
+        Row: {
+          id: string;
+          tenantId: string;
+          code: string;
+          room: string | null;
+          ward: string | null;
+          status: BedStatus;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          tenantId: string;
+          code: string;
+          room?: string | null;
+          ward?: string | null;
+          status?: BedStatus;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["beds"]["Insert"]>;
+        Relationships: [];
+      };
+      admissions: {
+        Row: {
+          id: string;
+          tenantId: string;
+          patientId: string;
+          doctorId: string | null;
+          bedId: string | null;
+          reason: string | null;
+          admittedAt: string;
+          dischargedAt: string | null;
+          status: AdmissionStatus;
+          notes: string | null;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          tenantId: string;
+          patientId: string;
+          doctorId?: string | null;
+          bedId?: string | null;
+          reason?: string | null;
+          admittedAt?: string;
+          dischargedAt?: string | null;
+          status?: AdmissionStatus;
+          notes?: string | null;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["admissions"]["Insert"]>;
         Relationships: [];
       };
     };

@@ -219,6 +219,160 @@ export function useDoctors(tenantId: string | null) {
   return { doctors, loading };
 }
 
+// ── Insurance providers hook ────────────────────────────────────
+export function useInsuranceProviders(tenantId: string | null) {
+  const [providers, setProviders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetch = useCallback(async () => {
+    if (!tenantId) return;
+    setLoading(true);
+    const { data } = await (supabase as any)
+      .from("insurance_providers")
+      .select("*")
+      .eq("tenantId", tenantId)
+      .order("name");
+    setProviders(data ?? []);
+    setLoading(false);
+  }, [tenantId]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+  return { providers, loading, refetch: fetch };
+}
+
+// ── Medical practices hook ──────────────────────────────────────
+export function useMedicalPractices(tenantId: string | null, providerId?: string | null) {
+  const [practices, setPractices] = useState<any[]>([]);
+  const [nomenclators, setNomenclators] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetch = useCallback(async () => {
+    if (!tenantId) return;
+    setLoading(true);
+    let q = (supabase as any)
+      .from("medical_practices")
+      .select("*, nomenclators(name, insuranceProviderId)")
+      .eq("tenantId", tenantId)
+      .eq("isActive", true)
+      .order("code");
+    if (providerId) {
+      const { data: noms } = await (supabase as any)
+        .from("nomenclators")
+        .select("id")
+        .eq("insuranceProviderId", providerId);
+      const nomIds = (noms ?? []).map((n: any) => n.id);
+      if (nomIds.length > 0) {
+        q = q.in("nomenclatorId", nomIds);
+      } else {
+        setPractices([]);
+        setLoading(false);
+        return;
+      }
+    }
+    const { data } = await q;
+    setPractices(data ?? []);
+
+    if (tenantId) {
+      const { data: nomData } = await (supabase as any)
+        .from("nomenclators")
+        .select("*")
+        .eq("tenantId", tenantId);
+      setNomenclators(nomData ?? []);
+    }
+    setLoading(false);
+  }, [tenantId, providerId]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+  return { practices, nomenclators, loading, refetch: fetch };
+}
+
+// ── Patient coverages hook ──────────────────────────────────────
+export function usePatientCoverages(tenantId: string | null, providerId?: string | null) {
+  const [coverages, setCoverages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetch = useCallback(async () => {
+    if (!tenantId) return;
+    setLoading(true);
+    let q = (supabase as any)
+      .from("patient_coverages")
+      .select("*, patients(firstName, lastName, dni), insurance_providers(name, code)")
+      .eq("tenantId", tenantId)
+      .order("createdAt", { ascending: false });
+    if (providerId) q = q.eq("insuranceProviderId", providerId);
+    const { data } = await q;
+    setCoverages(data ?? []);
+    setLoading(false);
+  }, [tenantId, providerId]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+  return { coverages, loading, refetch: fetch };
+}
+
+// ── Invoices hook ───────────────────────────────────────────────
+export function useInvoices(tenantId: string | null) {
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetch = useCallback(async () => {
+    if (!tenantId) return;
+    setLoading(true);
+    const { data } = await (supabase as any)
+      .from("invoices")
+      .select("*, patients(firstName, lastName), insurance_providers(name, code), invoice_items(*)")
+      .eq("tenantId", tenantId)
+      .order("createdAt", { ascending: false });
+    setInvoices(data ?? []);
+    setLoading(false);
+  }, [tenantId]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+  return { invoices, loading, refetch: fetch };
+}
+
+// ── Beds hook ───────────────────────────────────────────────────
+export function useBeds(tenantId: string | null) {
+  const [beds, setBeds] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetch = useCallback(async () => {
+    if (!tenantId) return;
+    setLoading(true);
+    const { data } = await (supabase as any)
+      .from("beds")
+      .select("*")
+      .eq("tenantId", tenantId)
+      .order("ward")
+      .order("code");
+    setBeds(data ?? []);
+    setLoading(false);
+  }, [tenantId]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+  return { beds, loading, refetch: fetch };
+}
+
+// ── Admissions hook ─────────────────────────────────────────────
+export function useAdmissions(tenantId: string | null) {
+  const [admissions, setAdmissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetch = useCallback(async () => {
+    if (!tenantId) return;
+    setLoading(true);
+    const { data } = await (supabase as any)
+      .from("admissions")
+      .select("*, patients(firstName, lastName, dni), users(firstName, lastName, specialty), beds(code, room, ward)")
+      .eq("tenantId", tenantId)
+      .order("admittedAt", { ascending: false });
+    setAdmissions(data ?? []);
+    setLoading(false);
+  }, [tenantId]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+  return { admissions, loading, refetch: fetch };
+}
+
 // ── Realtime appointments subscription ─────────────────────────
 export function useRealtimeAppointments(tenantId: string | null, onUpdate: () => void) {
   useEffect(() => {
