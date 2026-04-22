@@ -1,12 +1,23 @@
 -- ============================================================
--- HIS SaaS — Migration v3 (tipos correctos)
+-- HIS SaaS — Migration v4 (drop & recreate con tipos correctos)
+-- Elimina tablas previas que pudieran tener columnas en snake_case
 -- tenants.id / patients.id / users.id son TEXT (CUID de Prisma)
 -- Las nuevas tablas usan UUID para sus propios IDs
 -- Ejecutar en: Supabase Dashboard → SQL Editor
 -- ============================================================
 
+-- ── Drop previo (orden inverso de dependencias) ─────────────────
+DROP TABLE IF EXISTS admissions       CASCADE;
+DROP TABLE IF EXISTS invoice_items    CASCADE;
+DROP TABLE IF EXISTS invoices         CASCADE;
+DROP TABLE IF EXISTS patient_coverages CASCADE;
+DROP TABLE IF EXISTS medical_practices CASCADE;
+DROP TABLE IF EXISTS nomenclators      CASCADE;
+DROP TABLE IF EXISTS beds              CASCADE;
+DROP TABLE IF EXISTS insurance_providers CASCADE;
+
 -- ── Obras Sociales ─────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS insurance_providers (
+CREATE TABLE insurance_providers (
   id           uuid    DEFAULT gen_random_uuid() PRIMARY KEY,
   "tenantId"   text    NOT NULL,                -- CUID → text
   name         text    NOT NULL,
@@ -16,10 +27,10 @@ CREATE TABLE IF NOT EXISTS insurance_providers (
   "createdAt"  timestamptz DEFAULT now(),
   "updatedAt"  timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_ip_tenant ON insurance_providers("tenantId");
+CREATE INDEX idx_ip_tenant ON insurance_providers("tenantId");
 
 -- ── Nomencladores ──────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS nomenclators (
+CREATE TABLE nomenclators (
   id                    uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   "tenantId"            text NOT NULL,
   "insuranceProviderId" uuid NOT NULL REFERENCES insurance_providers(id) ON DELETE CASCADE,
@@ -29,11 +40,11 @@ CREATE TABLE IF NOT EXISTS nomenclators (
   "createdAt"           timestamptz DEFAULT now(),
   "updatedAt"           timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_nom_tenant   ON nomenclators("tenantId");
-CREATE INDEX IF NOT EXISTS idx_nom_provider ON nomenclators("insuranceProviderId");
+CREATE INDEX idx_nom_tenant   ON nomenclators("tenantId");
+CREATE INDEX idx_nom_provider ON nomenclators("insuranceProviderId");
 
 -- ── Prácticas médicas ──────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS medical_practices (
+CREATE TABLE medical_practices (
   id              uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   "tenantId"      text NOT NULL,
   "nomenclatorId" uuid NOT NULL REFERENCES nomenclators(id) ON DELETE CASCADE,
@@ -45,11 +56,11 @@ CREATE TABLE IF NOT EXISTS medical_practices (
   "createdAt"     timestamptz DEFAULT now(),
   "updatedAt"     timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_mp_tenant      ON medical_practices("tenantId");
-CREATE INDEX IF NOT EXISTS idx_mp_nomenclator ON medical_practices("nomenclatorId");
+CREATE INDEX idx_mp_tenant      ON medical_practices("tenantId");
+CREATE INDEX idx_mp_nomenclator ON medical_practices("nomenclatorId");
 
 -- ── Coberturas de pacientes ────────────────────────────────────
-CREATE TABLE IF NOT EXISTS patient_coverages (
+CREATE TABLE patient_coverages (
   id                    uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   "tenantId"            text NOT NULL,
   "patientId"           text NOT NULL,           -- CUID → text
@@ -63,12 +74,12 @@ CREATE TABLE IF NOT EXISTS patient_coverages (
   "createdAt"           timestamptz DEFAULT now(),
   "updatedAt"           timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_pc_tenant   ON patient_coverages("tenantId");
-CREATE INDEX IF NOT EXISTS idx_pc_patient  ON patient_coverages("patientId");
-CREATE INDEX IF NOT EXISTS idx_pc_provider ON patient_coverages("insuranceProviderId");
+CREATE INDEX idx_pc_tenant   ON patient_coverages("tenantId");
+CREATE INDEX idx_pc_patient  ON patient_coverages("patientId");
+CREATE INDEX idx_pc_provider ON patient_coverages("insuranceProviderId");
 
 -- ── Facturas ───────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS invoices (
+CREATE TABLE invoices (
   id                    uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   "tenantId"            text NOT NULL,
   "patientId"           text,                    -- CUID → text (nullable)
@@ -82,11 +93,11 @@ CREATE TABLE IF NOT EXISTS invoices (
   "createdAt"           timestamptz DEFAULT now(),
   "updatedAt"           timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_inv_tenant  ON invoices("tenantId");
-CREATE INDEX IF NOT EXISTS idx_inv_patient ON invoices("patientId");
+CREATE INDEX idx_inv_tenant  ON invoices("tenantId");
+CREATE INDEX idx_inv_patient ON invoices("patientId");
 
 -- ── Ítems de factura ───────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS invoice_items (
+CREATE TABLE invoice_items (
   id                  uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   "tenantId"          text NOT NULL,
   "invoiceId"         uuid NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
@@ -97,10 +108,10 @@ CREATE TABLE IF NOT EXISTS invoice_items (
   "totalPrice"        numeric(12,2) NOT NULL,
   "createdAt"         timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_ii_invoice ON invoice_items("invoiceId");
+CREATE INDEX idx_ii_invoice ON invoice_items("invoiceId");
 
 -- ── Camas ──────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS beds (
+CREATE TABLE beds (
   id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   "tenantId"  text NOT NULL,
   code        text NOT NULL,
@@ -110,10 +121,10 @@ CREATE TABLE IF NOT EXISTS beds (
   "createdAt" timestamptz DEFAULT now(),
   "updatedAt" timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_beds_tenant ON beds("tenantId");
+CREATE INDEX idx_beds_tenant ON beds("tenantId");
 
 -- ── Internaciones ──────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS admissions (
+CREATE TABLE admissions (
   id             uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   "tenantId"     text NOT NULL,
   "patientId"    text NOT NULL,             -- CUID → text
@@ -127,9 +138,9 @@ CREATE TABLE IF NOT EXISTS admissions (
   "createdAt"    timestamptz DEFAULT now(),
   "updatedAt"    timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_adm_tenant  ON admissions("tenantId");
-CREATE INDEX IF NOT EXISTS idx_adm_patient ON admissions("patientId");
-CREATE INDEX IF NOT EXISTS idx_adm_status  ON admissions(status);
+CREATE INDEX idx_adm_tenant  ON admissions("tenantId");
+CREATE INDEX idx_adm_patient ON admissions("patientId");
+CREATE INDEX idx_adm_status  ON admissions(status);
 
 -- ── RLS ────────────────────────────────────────────────────────
 ALTER TABLE insurance_providers ENABLE ROW LEVEL SECURITY;
