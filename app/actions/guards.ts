@@ -1,6 +1,5 @@
 "use server";
 
-import { createEntityId } from "./_ids";
 import { getAuthContext } from "./_helpers";
 
 export async function createBed(payload: {
@@ -10,7 +9,7 @@ export async function createBed(payload: {
   if (!ctx) return { error: "No autenticado" };
   const { data, error } = await ctx.db
     .from("beds")
-    .insert({ id: createEntityId(), ...payload, tenantId: ctx.profile.tenantId, status: "AVAILABLE", updatedAt: new Date().toISOString() })
+    .insert({ id: crypto.randomUUID(), ...payload, tenantId: ctx.profile.tenantId, status: "AVAILABLE", updatedAt: new Date().toISOString() })
     .select().single();
   return { data, error: error?.message ?? null };
 }
@@ -38,7 +37,7 @@ export async function createAdmission(payload: {
   const { data, error } = await ctx.db
     .from("admissions")
     .insert({
-      id: createEntityId(),
+      id: crypto.randomUUID(),
       ...payload,
       tenantId: ctx.profile.tenantId,
       admittedAt: new Date().toISOString(),

@@ -1,6 +1,5 @@
 "use server";
 
-import { createEntityId } from "./_ids";
 import { getAuthContext } from "./_helpers";
 import type { AppointmentStatus } from "@/lib/supabase/types";
 
@@ -40,7 +39,7 @@ export async function createAppointment(payload: {
   const { data, error } = await ctx.db
     .from("appointments")
     .insert({
-      id: createEntityId(),
+      id: crypto.randomUUID(),
       ...payload,
       tenantId: ctx.profile.tenantId,
       status: "SCHEDULED",

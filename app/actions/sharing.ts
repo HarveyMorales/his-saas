@@ -1,6 +1,5 @@
 "use server";
 
-import { createEntityId } from "./_ids";
 import { getAuthContext } from "./_helpers";
 
 export async function getShareRequests() {
@@ -79,7 +78,7 @@ export async function createShareRequest(payload: {
   const { data, error } = await ctx.db
     .from("share_requests")
     .insert({
-      id: createEntityId(),
+      id: crypto.randomUUID(),
       ...payload,
       fromTenantId: ctx.profile.tenantId,
       requestedById: ctx.profile.id,

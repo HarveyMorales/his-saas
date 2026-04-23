@@ -1,6 +1,5 @@
 "use server";
 
-import { createEntityId } from "./_ids";
 import { getAuthContext } from "./_helpers";
 
 export async function getInsuranceProviders() {
@@ -21,7 +20,7 @@ export async function createInsuranceProvider(payload: {
   if (!ctx) return { error: "No autenticado" };
   const { data, error } = await ctx.db
     .from("insurance_providers")
-    .insert({ id: createEntityId(), ...payload, tenantId: ctx.profile.tenantId, updatedAt: new Date().toISOString() })
+    .insert({ id: crypto.randomUUID(), ...payload, tenantId: ctx.profile.tenantId, updatedAt: new Date().toISOString() })
     .select().single();
   return { data, error: error?.message ?? null };
 }
@@ -45,7 +44,7 @@ export async function createNomenclator(payload: {
   if (!ctx) return { error: "No autenticado" };
   const { data, error } = await ctx.db
     .from("nomenclators")
-    .insert({ id: createEntityId(), ...payload, tenantId: ctx.profile.tenantId, updatedAt: new Date().toISOString() })
+    .insert({ id: crypto.randomUUID(), ...payload, tenantId: ctx.profile.tenantId, updatedAt: new Date().toISOString() })
     .select().single();
   return { data, error: error?.message ?? null };
 }
