@@ -34,8 +34,11 @@ function toMockPatient(p: any): Patient {
   } as Patient;
 }
 
+const PAGE_SIZE = 20;
+
 export function PatientsView({ onSelectPatient, onNewPatient, refreshKey }: PatientsViewProps) {
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const { profile, loading: profileLoading } = useCurrentUser();
   const tenantId = (profile as any)?.tenantId ?? null;
   const { patients: dbPatients, loading: patientsLoading, refetch } = usePatients(tenantId, search);
@@ -65,6 +68,9 @@ export function PatientsView({ onSelectPatient, onNewPatient, refreshKey }: Pati
 
   const loading = profileLoading || (!!tenantId && patientsLoading);
   const isLive = !!tenantId;
+
+  const totalPages = Math.max(1, Math.ceil(allPatients.length / PAGE_SIZE));
+  const pagePatients = allPatients.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div>
@@ -134,7 +140,7 @@ export function PatientsView({ onSelectPatient, onNewPatient, refreshKey }: Pati
             </tr>
           </thead>
           <tbody>
-            {allPatients.map((p, i) => (
+            {pagePatients.map((p, i) => (
               <tr
                 key={p.id ?? i}
                 className="tbl-row"
@@ -177,6 +183,33 @@ export function PatientsView({ onSelectPatient, onNewPatient, refreshKey }: Pati
             ))}
           </tbody>
         </table>
+        )}
+
+        {!loading && totalPages > 1 && (
+          <div style={{ padding: "12px 16px", borderTop: "1px solid var(--slate-100)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 12, color: "var(--slate-500)" }}>
+              Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, allPatients.length)} de {allPatients.length}
+            </span>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid var(--slate-200)", background: "white", cursor: page === 1 ? "not-allowed" : "pointer", fontSize: 12, color: "var(--slate-600)", opacity: page === 1 ? 0.4 : 1 }}>
+                ← Anterior
+              </button>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                const n = i + 1;
+                return (
+                  <button key={n} onClick={() => setPage(n)}
+                    style={{ padding: "5px 10px", borderRadius: 6, border: "none", background: page === n ? "var(--navy)" : "var(--slate-100)", color: page === n ? "white" : "var(--slate-600)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                    {n}
+                  </button>
+                );
+              })}
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid var(--slate-200)", background: "white", cursor: page === totalPages ? "not-allowed" : "pointer", fontSize: 12, color: "var(--slate-600)", opacity: page === totalPages ? 0.4 : 1 }}>
+                Siguiente →
+              </button>
+            </div>
+          </div>
         )}
 
         {!loading && allPatients.length === 0 && (
