@@ -1,18 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { APPOINTMENTS, GUARDS, HC_SHARE_REQUESTS } from "@/lib/data";
 import { useCurrentUser, useAppointments, usePatients, useAdmissions, useInvoices } from "@/lib/hooks/useSupabase";
 import type { Institution, NavId } from "@/lib/types";
-import { TrendingUp, Users, Calendar, Activity, DollarSign, AlertTriangle, ChevronRight } from "lucide-react";
+import { TrendingUp, Users, Calendar, Activity, DollarSign, AlertTriangle, ChevronRight, Plus } from "lucide-react";
 
 interface DashboardViewProps {
   institution: Institution | null;
   onNav: (id: NavId) => void;
 }
+
+/* Wavy SVG line — the "lines that go in the wind" */
+function WindLine({ color, opacity = 0.5 }: { color: string; opacity?: number }) {
+  return (
+    <svg width="100%" height="6" viewBox="0 0 400 6" preserveAspectRatio="none" style={{ display: "block", margin: "6px 0 14px" }}>
+      <path
+        d="M0,3 C50,0 50,6 100,3 C150,0 150,6 200,3 C250,0 250,6 300,3 C350,0 350,6 400,3"
+        fill="none"
+        style={{ stroke: color, strokeWidth: "1.5", strokeOpacity: opacity }}
+      />
+    </svg>
+  );
+}
+
+/* Unique organic border-radius per stat card — the wind-blown frames */
+const WIND_RADII = [
+  "22px 30px 20px 16px / 16px 20px 30px 22px",
+  "30px 18px 26px 22px / 22px 26px 18px 30px",
+  "18px 24px 30px 20px / 30px 18px 24px 20px",
+  "24px 20px 16px 28px / 18px 28px 22px 16px",
+];
 
 export function DashboardView({ institution, onNav }: DashboardViewProps) {
   const today = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -21,38 +41,65 @@ export function DashboardView({ institution, onNav }: DashboardViewProps) {
   const { profile } = useCurrentUser();
   const tenantId = (profile as any)?.tenantId ?? null;
   const isLive = !!tenantId;
+  const firstName = (profile as any)?.firstName ?? null;
 
   const { appointments: dbAppts, loading: apptLoading } = useAppointments(tenantId, todayISO);
   const { patients: dbPatients, loading: patientsLoading } = usePatients(tenantId);
   const { admissions: dbAdmissions } = useAdmissions(tenantId);
   const { invoices: dbInvoices } = useInvoices(tenantId);
 
-  const apptCount = isLive ? dbAppts.length : APPOINTMENTS.length;
+  const apptCount    = isLive ? dbAppts.length : APPOINTMENTS.length;
   const patientCount = isLive ? dbPatients.length : 1284;
   const pendingAppts = isLive
     ? dbAppts.filter((a: any) => a.status === "SCHEDULED").length
     : APPOINTMENTS.filter(a => a.status === "PENDIENTE").length;
 
   const STATS = [
-    { label: "Pacientes activos", value: patientsLoading ? "…" : patientCount.toLocaleString(), delta: "registrados", icon: <Users size={18} />, color: "#00BFA6", data: [30,45,38,60,52,72,65,82,75,92] },
-    { label: "Turnos hoy", value: apptLoading ? "…" : String(apptCount), delta: `${pendingAppts} pendientes`, icon: <Calendar size={18} />, color: "#2563EB", data: [20,35,25,50,40,65,55,75,68,85] },
-    { label: "Guardias activas", value: isLive ? String(dbAdmissions.filter((a: any) => a.status === "ACTIVE").length) : "3", delta: isLive ? `${dbAdmissions.length} total` : "2 médicos en turno", icon: <Activity size={18} />, color: "#F59E0B", data: [1,2,1,3,2,3,2,4,3,3] },
-    { label: "Facturación mes", value: isLive ? `$${(dbInvoices.reduce((s: number, i: any) => s + Number(i.total ?? 0), 0) / 1000).toFixed(1)}K` : "$284.5K", delta: isLive ? `${dbInvoices.filter((i: any) => i.status === "PENDING").length} pendientes` : "+18% vs ant.", icon: <DollarSign size={18} />, color: "#8B5CF6", data: [60,75,65,85,70,90,82,95,88,100] },
+    {
+      label: "Pacientes activos",
+      value: patientsLoading ? "…" : patientCount.toLocaleString(),
+      delta: "registrados",
+      icon: <Users size={20} />,
+      color: "#00BFA6",
+      data: [30,45,38,60,52,72,65,82,75,92],
+    },
+    {
+      label: "Turnos hoy",
+      value: apptLoading ? "…" : String(apptCount),
+      delta: `${pendingAppts} pendientes`,
+      icon: <Calendar size={20} />,
+      color: "#2563EB",
+      data: [20,35,25,50,40,65,55,75,68,85],
+    },
+    {
+      label: "Guardias activas",
+      value: isLive ? String(dbAdmissions.filter((a: any) => a.status === "ACTIVE").length) : "3",
+      delta: isLive ? `${dbAdmissions.length} total` : "2 médicos en turno",
+      icon: <Activity size={20} />,
+      color: "#F59E0B",
+      data: [1,2,1,3,2,3,2,4,3,3],
+    },
+    {
+      label: "Facturación mes",
+      value: isLive
+        ? `$${(dbInvoices.reduce((s: number, i: any) => s + Number(i.total ?? 0), 0) / 1000).toFixed(1)}K`
+        : "$284.5K",
+      delta: isLive
+        ? `${dbInvoices.filter((i: any) => i.status === "PENDING").length} pendientes`
+        : "+18% vs ant.",
+      icon: <DollarSign size={20} />,
+      color: "#8B5CF6",
+      data: [60,75,65,85,70,90,82,95,88,100],
+    },
   ];
 
-  // For appointments table: show real data when live
   const STATUS_LABEL: Record<string, string> = {
-    SCHEDULED: "PENDIENTE",
-    IN_PROGRESS: "EN CURSO",
-    COMPLETED: "CONFIRMADO",
-    CANCELLED: "CANCELADO",
-    CONFIRMED: "CONFIRMADO",
-    NO_SHOW: "CANCELADO",
-    RESCHEDULED: "PENDIENTE",
+    SCHEDULED: "PENDIENTE", IN_PROGRESS: "EN CURSO", COMPLETED: "CONFIRMADO",
+    CANCELLED: "CANCELADO", CONFIRMED: "CONFIRMADO", NO_SHOW: "CANCELADO", RESCHEDULED: "PENDIENTE",
   };
 
   const displayAppts = isLive
-    ? dbAppts.slice(0, 7).map((a: any) => ({
+    ? dbAppts.slice(0, 8).map((a: any) => ({
         id: a.id,
         time: a.scheduledAt ? new Date(a.scheduledAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—",
         patient: a.patients ? `${a.patients.lastName}, ${a.patients.firstName}` : "—",
@@ -61,91 +108,159 @@ export function DashboardView({ institution, onNav }: DashboardViewProps) {
         obra: "Particular",
         status: STATUS_LABEL[a.status] ?? "PENDIENTE",
       }))
-    : APPOINTMENTS.slice(0, 7);
+    : APPOINTMENTS.slice(0, 8);
+
+  const glassCard: React.CSSProperties = {
+    background: "var(--glass-bg)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    border: "1px solid var(--glass-border)",
+    boxShadow: "var(--glass-shadow)",
+  };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      {/* Header */}
-      <div>
-        <h1 style={{ margin: 0, fontFamily: "Georgia, serif", fontSize: 26, fontWeight: 700, color: "var(--navy)", letterSpacing: -0.5 }}>
-          Dashboard General
-        </h1>
-        <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--slate-500)", textTransform: "capitalize", display: "flex", alignItems: "center", gap: 8 }}>
-          {today} · {institution?.name ?? "Seleccioná institución"}
-          {isLive && (
-            <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: "rgba(16,185,129,0.1)", color: "#059669" }}>
-              LIVE DB
-            </span>
-          )}
-        </p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+      {/* ── Welcome banner ─────────────────────────────────────────────── */}
+      <div style={{
+        ...glassCard,
+        borderRadius: "28px 22px 32px 18px / 18px 32px 22px 28px",
+        padding: "22px 28px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: 20,
+      }}>
+        <div>
+          <p style={{ margin: "0 0 4px", fontSize: 12, color: "var(--slate-500)", fontWeight: 600, textTransform: "capitalize" }}>
+            {today}
+          </p>
+          <h1 style={{ margin: "0 0 6px", fontFamily: "Georgia, serif", fontSize: 26, fontWeight: 700, color: "var(--navy)", letterSpacing: -0.5 }}>
+            Buen día{firstName ? `, ${firstName}` : ""} 👋
+          </h1>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--slate-500)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {institution?.name ?? "Sistema HIS"} ·{" "}
+            {apptLoading ? "cargando..." : `${apptCount} turnos hoy · ${pendingAppts} pendientes`}
+            {isLive && (
+              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(16,185,129,0.12)", color: "#059669", border: "1px solid rgba(16,185,129,0.20)" }}>
+                LIVE DB
+              </span>
+            )}
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+          <button
+            onClick={() => onNav("appointments")}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "10px 20px", borderRadius: "14px 10px 16px 12px / 12px 16px 10px 14px",
+              background: "var(--teal)", color: "white",
+              border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700,
+              boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
+            }}
+          >
+            <Plus size={14} /> Nuevo turno
+          </button>
+          <button
+            onClick={() => onNav("patients")}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "10px 20px", borderRadius: "10px 16px 12px 14px / 14px 12px 16px 10px",
+              background: "rgba(255,255,255,0.45)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--navy)", cursor: "pointer", fontSize: 13, fontWeight: 700,
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <Plus size={14} /> Paciente
+          </button>
+        </div>
       </div>
 
-      {/* Stats */}
+      {/* ── Stat cards ────────────────────────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
         {STATS.map((s, i) => (
           <div
             key={i}
             style={{
-              background: "white",
-              borderRadius: 14,
+              ...glassCard,
+              borderRadius: WIND_RADII[i],
               padding: "18px 20px",
-              border: "1px solid var(--slate-200)",
-              borderTop: `3px solid ${s.color}`,
               cursor: "pointer",
-              transition: "box-shadow 0.15s, transform 0.15s",
+              transition: "transform 0.2s ease, box-shadow 0.2s ease",
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 20px rgba(0,0,0,0.08)"; (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)";
+              (e.currentTarget as HTMLElement).style.boxShadow = "var(--glass-shadow), 0 16px 40px rgba(0,0,0,0.12)";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+              (e.currentTarget as HTMLElement).style.boxShadow = "var(--glass-shadow)";
+            }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+            <WindLine color={s.color} opacity={0.55} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
               <div>
-                <div style={{ fontSize: 10, color: "var(--slate-500)", fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>
+                <div style={{ fontSize: 9, color: "var(--slate-500)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>
                   {s.label}
                 </div>
-                <div style={{ fontFamily: "Georgia, serif", fontSize: 30, fontWeight: 700, color: "var(--navy)", letterSpacing: -1, marginTop: 3, lineHeight: 1 }}>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 34, fontWeight: 700, color: "var(--navy)", letterSpacing: -1.5, lineHeight: 1 }}>
                   {s.value}
                 </div>
-                <div style={{ fontSize: 11, color: "#10B981", fontWeight: 600, marginTop: 4, display: "flex", alignItems: "center", gap: 3 }}>
-                  <TrendingUp size={10} />
-                  {s.delta}
+                <div style={{ fontSize: 11, color: "var(--green)", fontWeight: 600, marginTop: 5, display: "flex", alignItems: "center", gap: 3 }}>
+                  <TrendingUp size={10} /> {s.delta}
                 </div>
               </div>
               <div style={{
-                width: 40, height: 40, borderRadius: 10,
-                background: `${s.color}15`,
+                width: 46, height: 46, borderRadius: "50%",
+                background: `${s.color}18`,
+                border: `1.5px solid ${s.color}30`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 color: s.color,
               }}>
                 {s.icon}
               </div>
             </div>
-            <Sparkline color={s.color} data={s.data} width={80} height={28} />
+            <Sparkline color={s.color} data={s.data} width={80} height={26} />
           </div>
         ))}
       </div>
 
-      {/* Main grid */}
+      {/* ── Main grid ──────────────────────────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 16 }}>
-        {/* Appointments table */}
-        <div style={{ background: "white", borderRadius: 14, border: "1px solid var(--slate-200)", overflow: "hidden" }}>
-          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--slate-100)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+
+        {/* Appointments panel */}
+        <div style={{
+          ...glassCard,
+          borderRadius: "22px 16px 24px 20px / 20px 24px 16px 22px",
+          overflow: "hidden",
+        }}>
+          <div style={{ padding: "18px 22px 10px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
             <div>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700, color: "var(--navy)" }}>
+              <div style={{ fontFamily: "Georgia, serif", fontSize: 17, fontWeight: 700, color: "var(--navy)" }}>
                 Próximos turnos
               </div>
-              <div style={{ fontSize: 12, color: "var(--slate-500)", marginTop: 2 }}>
+              <WindLine color="var(--teal)" opacity={0.45} />
+              <div style={{ fontSize: 12, color: "var(--slate-500)" }}>
                 {apptLoading ? "Cargando..." : `${apptCount} turnos programados hoy`}
               </div>
             </div>
             <button
               onClick={() => onNav("appointments")}
-              style={{ padding: "7px 16px", borderRadius: 8, background: "var(--teal)", color: "white", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700 }}
+              style={{
+                padding: "7px 16px",
+                borderRadius: "10px 14px 10px 12px / 12px 10px 14px 10px",
+                background: "var(--teal)", color: "white", border: "none",
+                cursor: "pointer", fontSize: 12, fontWeight: 700,
+                boxShadow: "0 2px 10px rgba(0,0,0,0.12)",
+              }}
             >
               + Nuevo
             </button>
           </div>
+
           {apptLoading ? (
-            <div style={{ padding: "30px", textAlign: "center", color: "var(--slate-400)", fontSize: 13 }}>Cargando...</div>
+            <div style={{ padding: "30px", textAlign: "center", color: "var(--slate-400)", fontSize: 13 }}>
+              Cargando...
+            </div>
           ) : displayAppts.length === 0 ? (
             <div style={{ padding: "30px", textAlign: "center", color: "var(--slate-400)", fontSize: 13 }}>
               No hay turnos para hoy
@@ -153,9 +268,14 @@ export function DashboardView({ institution, onNav }: DashboardViewProps) {
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
               <thead>
-                <tr style={{ background: "var(--slate-50)" }}>
+                <tr style={{ background: "rgba(255,255,255,0.30)" }}>
                   {["Hora", "Paciente", "Profesional", "Especialidad", "Obra Social", "Estado"].map(h => (
-                    <th key={h} style={{ padding: "9px 14px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--slate-500)", letterSpacing: 0.6, textTransform: "uppercase", borderBottom: "1px solid var(--slate-200)" }}>
+                    <th key={h} style={{
+                      padding: "9px 14px", textAlign: "left",
+                      fontSize: 10, fontWeight: 700, color: "var(--slate-500)",
+                      letterSpacing: 0.7, textTransform: "uppercase",
+                      borderBottom: "1px solid rgba(255,255,255,0.30)",
+                    }}>
                       {h}
                     </th>
                   ))}
@@ -167,9 +287,10 @@ export function DashboardView({ institution, onNav }: DashboardViewProps) {
                     key={a.id ?? i}
                     className="tbl-row"
                     style={{
-                      borderBottom: "1px solid var(--slate-100)",
-                      background: a.status === "EN CURSO" ? "#EFF6FF" : "transparent",
+                      borderBottom: "1px solid rgba(255,255,255,0.25)",
+                      background: a.status === "EN CURSO" ? "rgba(37,99,235,0.06)" : "transparent",
                       cursor: "pointer",
+                      transition: "background 0.12s",
                     }}
                     onClick={() => onNav("appointments")}
                   >
@@ -188,17 +309,34 @@ export function DashboardView({ institution, onNav }: DashboardViewProps) {
 
         {/* Right column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* Guards */}
-          <div style={{ background: "white", borderRadius: 14, border: "1px solid var(--slate-200)", overflow: "hidden" }}>
-            <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--slate-100)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ fontFamily: "Georgia, serif", fontSize: 14, fontWeight: 700, color: "var(--navy)" }}>Guardias</div>
-              <button onClick={() => onNav("guards")} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--teal)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 2 }}>
+
+          {/* Guards card */}
+          <div style={{
+            ...glassCard,
+            borderRadius: "24px 16px 20px 28px / 28px 20px 16px 24px",
+            overflow: "hidden",
+          }}>
+            <div style={{ padding: "14px 16px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 14, fontWeight: 700, color: "var(--navy)" }}>
+                  Guardias
+                </div>
+                <WindLine color="var(--amber)" opacity={0.50} />
+              </div>
+              <button
+                onClick={() => onNav("guards")}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--teal)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 2 }}
+              >
                 Ver todas <ChevronRight size={12} />
               </button>
             </div>
-            <div style={{ padding: "8px 0" }}>
+            <div style={{ paddingBottom: 4 }}>
               {GUARDS.filter(g => g.status !== "PROGRAMADA").map((g, i, arr) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 16px", borderBottom: i < arr.length - 1 ? "1px solid var(--slate-100)" : "none" }}>
+                <div key={i} style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "9px 16px",
+                  borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.25)" : "none",
+                }}>
                   <Avatar
                     initials={g.doctor.split(" ").slice(1).map(w => w[0]).join("").slice(0, 2)}
                     color={g.status === "ACTIVA" ? "#10B981" : "#F59E0B"}
@@ -218,36 +356,49 @@ export function DashboardView({ institution, onNav }: DashboardViewProps) {
             </div>
           </div>
 
-          {/* HC Share Alert */}
+          {/* HC Share alerts */}
           {HC_SHARE_REQUESTS.filter(r => r.status === "PENDIENTE").map((req, i) => (
             <div key={i} style={{
-              background: "#FFFBEB",
-              border: "1px solid #FDE68A",
-              borderLeft: "4px solid var(--amber)",
-              borderRadius: 12,
+              ...glassCard,
+              borderRadius: "16px 24px 18px 22px / 22px 18px 24px 16px",
               padding: "14px 16px",
+              borderLeft: "3px solid var(--amber)",
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                <AlertTriangle size={13} color="#92400E" />
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#92400E" }}>SOLICITUD HC PENDIENTE</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                <AlertTriangle size={13} color="var(--amber)" />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--amber)" }}>
+                  SOLICITUD HC PENDIENTE
+                </span>
               </div>
+              <WindLine color="var(--amber)" opacity={0.35} />
               <div style={{ fontSize: 12, color: "var(--slate-700)", marginBottom: 2, fontWeight: 600 }}>
                 {req.patient}
               </div>
-              <div style={{ fontSize: 11, color: "var(--slate-500)", marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: "var(--slate-500)", marginBottom: 4 }}>
                 {req.fromInst} → {req.toInst}
               </div>
-              <div style={{ fontSize: 11, color: "var(--slate-500)", fontStyle: "italic", marginBottom: 10 }}>
+              <div style={{ fontSize: 11, color: "var(--slate-400)", fontStyle: "italic", marginBottom: 12 }}>
                 "{req.reason}"
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
                   onClick={() => onNav("sharing")}
-                  style={{ flex: 1, padding: "6px 0", borderRadius: 7, background: "var(--teal)", color: "white", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700 }}
+                  style={{
+                    flex: 1, padding: "7px 0",
+                    borderRadius: "10px 8px 12px 8px / 8px 12px 8px 10px",
+                    background: "var(--teal)", color: "white",
+                    border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700,
+                  }}
                 >
                   Revisar
                 </button>
-                <button style={{ flex: 1, padding: "6px 0", borderRadius: 7, background: "white", color: "var(--red)", border: "1px solid var(--red)", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>
+                <button style={{
+                  flex: 1, padding: "7px 0",
+                  borderRadius: "8px 12px 8px 10px / 10px 8px 12px 8px",
+                  background: "rgba(255,255,255,0.40)",
+                  color: "var(--red)", border: "1px solid var(--red-dim)",
+                  cursor: "pointer", fontSize: 11, fontWeight: 700,
+                }}>
                   Rechazar
                 </button>
               </div>

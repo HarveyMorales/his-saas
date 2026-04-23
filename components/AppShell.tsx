@@ -157,17 +157,27 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
     } catch {}
   };
 
+  // Fixed atmospheric blob background — renders on all phases
+  const AtmoBg = (
+    <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
+      <div style={{ position: "absolute", width: 900, height: 900, top: -300, left: -250, background: "var(--blob-1)", borderRadius: "50%", filter: "blur(100px)", animation: "blobFloat1 14s ease-in-out infinite" }} />
+      <div style={{ position: "absolute", width: 700, height: 700, top: "20%", right: -250, background: "var(--blob-2)", borderRadius: "50%", filter: "blur(80px)", animation: "blobFloat2 18s ease-in-out infinite 3s" }} />
+      <div style={{ position: "absolute", width: 600, height: 600, bottom: -200, left: "35%", background: "var(--blob-3)", borderRadius: "50%", filter: "blur(90px)", animation: "blobFloat3 12s ease-in-out infinite 6s" }} />
+    </div>
+  );
+
   // ── Login ────────────────────────────────────────────────────────────────────
   if (phase === "login") {
-    return <LoginView onLogin={handleLogin} />;
+    return <>{AtmoBg}<LoginView onLogin={handleLogin} /></>;
   }
 
   // ── Institution select ───────────────────────────────────────────────────────
   if (phase === "select-institution") {
     return (
-      <InstitutionView
-        onSelect={inst => { setInstitution(inst); setPhase("app"); }}
-      />
+      <>
+        {AtmoBg}
+        <InstitutionView onSelect={inst => { setInstitution(inst); setPhase("app"); }} />
+      </>
     );
   }
 
@@ -187,7 +197,7 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
   // ── Admin views (mock ADMIN_IT or real SUPER_ADMIN) ─────────────────────────
   const isSuperAdmin = currentUser?.role === "ADMIN_IT" || supabaseProfile?.role === "SUPER_ADMIN";
   if (isSuperAdmin) {
-    return <AdminView currentUser={displayUser} onLogout={handleLogout} />;
+    return <>{AtmoBg}<AdminView currentUser={displayUser} onLogout={handleLogout} /></>;
   }
 
   // ── First-time theme selector ────────────────────────────────────────────────
@@ -231,6 +241,7 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
 
   return (
     <>
+      {AtmoBg}
       <CommandPalette
         open={cmdOpen}
         onClose={() => setCmdOpen(false)}
@@ -253,7 +264,7 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
       )}
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
-      <div style={{ display: "flex", minHeight: "100vh" }}>
+      <div style={{ display: "flex", minHeight: "100vh", position: "relative", zIndex: 1 }}>
         <Sidebar
           open={sidebarOpen}
           activeNav={activeNav}
@@ -264,7 +275,7 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
           onLogout={handleLogout}
         />
 
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, background: "var(--slate-100)" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           <TopBar
             institution={institution}
             onToggleSidebar={() => setSidebarOpen(o => !o)}

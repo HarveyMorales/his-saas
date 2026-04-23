@@ -11,61 +11,79 @@ interface ThemeSelectorProps {
 function ThemePreview({ t, selected }: { t: typeof THEMES[ThemeId]; selected: boolean }) {
   return (
     <div style={{
-      borderRadius: 16,
+      borderRadius: "18px 24px 16px 22px / 22px 16px 24px 18px",
       overflow: "hidden",
-      border: selected ? `2px solid ${t.preview.accent}` : "2px solid rgba(255,255,255,0.1)",
-      boxShadow: selected ? `0 0 0 3px ${t.preview.accent}30, 0 12px 40px rgba(0,0,0,0.3)` : "0 4px 20px rgba(0,0,0,0.2)",
-      transform: selected ? "scale(1.03)" : "scale(1)",
-      transition: "all 0.2s ease",
+      border: selected ? `2px solid ${t.preview.accent}` : "2px solid rgba(255,255,255,0.15)",
+      boxShadow: selected
+        ? `0 0 0 3px ${t.preview.accent}40, 0 16px 48px rgba(0,0,0,0.35)`
+        : "0 6px 24px rgba(0,0,0,0.25)",
+      transform: selected ? "scale(1.04)" : "scale(1)",
+      transition: "all 0.25s ease",
       cursor: "pointer",
       background: t.preview.bg,
       width: "100%",
       aspectRatio: "4/3",
       position: "relative",
     }}>
-      {/* Mini sidebar */}
+      {/* Atmospheric blobs in preview */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden",
+      }}>
+        <div style={{ position: "absolute", width: "60%", height: "60%", top: "-20%", right: "-10%", background: t.preview.accent + "30", borderRadius: "50%", filter: "blur(20px)" }} />
+        <div style={{ position: "absolute", width: "45%", height: "45%", bottom: "-15%", left: "10%", background: t.preview.accent + "20", borderRadius: "50%", filter: "blur(16px)" }} />
+      </div>
+
+      {/* Glass sidebar */}
       <div style={{
         position: "absolute", left: 0, top: 0, bottom: 0, width: "28%",
         background: t.preview.sidebar,
+        backdropFilter: "blur(8px)",
         display: "flex", flexDirection: "column", padding: "10px 8px", gap: 6,
+        borderRight: "1px solid rgba(255,255,255,0.08)",
       }}>
         <div style={{ width: 20, height: 20, borderRadius: 6, background: t.preview.accent, marginBottom: 6 }} />
         {[80, 65, 75, 55, 70].map((w, i) => (
           <div key={i} style={{
             height: 5, borderRadius: 3,
-            background: i === 0 ? t.preview.accent : "rgba(255,255,255,0.15)",
+            background: i === 0 ? t.preview.accent : "rgba(255,255,255,0.18)",
             width: `${w}%`,
           }} />
         ))}
       </div>
 
       {/* Content area */}
-      <div style={{ position: "absolute", left: "30%", right: 0, top: 0, bottom: 0, padding: "10px 10px", display: "flex", flexDirection: "column", gap: 7 }}>
-        {/* Top bar */}
-        <div style={{ height: 8, background: t.preview.text + "18", borderRadius: 4, width: "50%" }} />
+      <div style={{ position: "absolute", left: "30%", right: 0, top: 0, bottom: 0, padding: "10px", display: "flex", flexDirection: "column", gap: 6 }}>
+        {/* Top bar glass */}
+        <div style={{ height: 10, background: "rgba(255,255,255,0.40)", borderRadius: 5, backdropFilter: "blur(4px)" }} />
 
-        {/* Stats row */}
-        <div style={{ display: "flex", gap: 6 }}>
-          {[t.preview.accent, t.preview.text + "30", t.preview.text + "20"].map((bg, i) => (
-            <div key={i} style={{ flex: 1, height: 22, borderRadius: 6, background: i === 0 ? bg + "25" : bg, borderTop: i === 0 ? `3px solid ${t.preview.accent}` : `3px solid ${t.preview.text}30` }} />
+        {/* Stats row - glass cards with organic radius */}
+        <div style={{ display: "flex", gap: 5 }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{
+              flex: 1, height: 22,
+              borderRadius: i === 0 ? "8px 6px 10px 7px / 7px 10px 6px 8px" : "6px 10px 7px 9px / 9px 7px 10px 6px",
+              background: i === 0 ? t.preview.card : "rgba(255,255,255,0.45)",
+              border: `1px solid rgba(255,255,255,0.30)`,
+              borderTop: i === 0 ? `2px solid ${t.preview.accent}` : "2px solid rgba(255,255,255,0.20)",
+            }} />
           ))}
         </div>
 
         {/* Table rows */}
         {[1, 2, 3].map(i => (
           <div key={i} style={{ display: "flex", gap: 5, alignItems: "center" }}>
-            <div style={{ width: 14, height: 14, borderRadius: "50%", background: t.preview.accent + (i === 1 ? "AA" : "44") }} />
-            <div style={{ flex: 1, height: 5, borderRadius: 3, background: t.preview.text + "18" }} />
-            <div style={{ width: 22, height: 5, borderRadius: 3, background: t.preview.accent + "55" }} />
+            <div style={{ width: 12, height: 12, borderRadius: "50%", background: t.preview.accent + (i === 1 ? "BB" : "55") }} />
+            <div style={{ flex: 1, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.35)" }} />
+            <div style={{ width: 18, height: 4, borderRadius: 2, background: t.preview.accent + "66" }} />
           </div>
         ))}
 
-        {/* Bottom chart suggestion */}
-        <div style={{ marginTop: "auto", display: "flex", gap: 3, alignItems: "flex-end", height: 24 }}>
+        {/* Bottom chart */}
+        <div style={{ marginTop: "auto", display: "flex", gap: 3, alignItems: "flex-end", height: 22 }}>
           {[40, 65, 50, 80, 60, 90, 70].map((h, i) => (
             <div key={i} style={{
               flex: 1, borderRadius: "3px 3px 0 0",
-              background: i === 5 ? t.preview.accent : t.preview.accent + "35",
+              background: i === 5 ? t.preview.accent : t.preview.accent + "40",
               height: `${h}%`,
             }} />
           ))}
@@ -77,6 +95,7 @@ function ThemePreview({ t, selected }: { t: typeof THEMES[ThemeId]; selected: bo
           position: "absolute", top: 8, right: 8,
           background: t.preview.accent, borderRadius: "50%",
           width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: `0 0 0 3px ${t.preview.accent}40`,
         }}>
           <CheckCircle size={14} color="white" />
         </div>

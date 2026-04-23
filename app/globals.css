@@ -3,11 +3,25 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════
-   TEMA 1 — HIS CLÁSICO (default)
-   Navy profundo + Teal + Sky blue (sin violeta)
+   TEMA 1 — ATARDECER (HIS Clásico)
+   Puesta de sol · Naranja difuminado · Teal
 ════════════════════════════════════════════════ */
 :root,
 [data-theme="clasico"] {
+  /* Atmospheric background */
+  --body-bg: linear-gradient(150deg, #BF3A10 0%, #D85E30 22%, #E88050 48%, #F0A070 72%, #F8C090 100%);
+  --blob-1: rgba(190, 50, 10, 0.55);
+  --blob-2: rgba(240, 140, 50, 0.45);
+  --blob-3: rgba(245, 190, 90, 0.35);
+
+  /* Glass system */
+  --glass-bg: rgba(255, 249, 244, 0.80);
+  --glass-sidebar: rgba(18, 5, 0, 0.58);
+  --glass-border: rgba(255, 200, 160, 0.28);
+  --glass-shadow: 0 8px 32px rgba(160, 50, 0, 0.15), 0 2px 8px rgba(0,0,0,0.10);
+  --glass-topbar: rgba(255, 249, 244, 0.70);
+
+  /* UI colors */
   --navy: #0B1D35;
   --navy-mid: #132540;
   --navy-lt: #1E3A5F;
@@ -23,7 +37,7 @@
   --red-dim: rgba(239, 68, 68, 0.1);
   --green: #10B981;
   --green-dim: rgba(16, 185, 129, 0.1);
-  --purple: #0EA5E9;           /* sky azul — reemplaza violeta */
+  --purple: #0EA5E9;
   --purple-dim: rgba(14, 165, 233, 0.12);
   --slate-50: #F8FAFC;
   --slate-100: #F1F5F9;
@@ -37,11 +51,24 @@
 }
 
 /* ═══════════════════════════════════════════════
-   TEMA 2 — BIENESTAR
-   Para estéticas, spas, consultorios wellness.
-   Fondo mint-cream · Coral fresco · Teal cálido
+   TEMA 2 — HIERBAS FRESCAS (Bienestar)
+   Bosque · Verde hierba · Coral fresco
 ════════════════════════════════════════════════ */
 [data-theme="bienestar"] {
+  /* Atmospheric background */
+  --body-bg: linear-gradient(150deg, #083520 0%, #115E35 22%, #1E8E52 48%, #32BB74 72%, #60D99A 100%);
+  --blob-1: rgba(8, 80, 35, 0.60);
+  --blob-2: rgba(30, 160, 80, 0.45);
+  --blob-3: rgba(80, 210, 130, 0.35);
+
+  /* Glass system */
+  --glass-bg: rgba(240, 255, 248, 0.80);
+  --glass-sidebar: rgba(0, 18, 8, 0.60);
+  --glass-border: rgba(160, 255, 200, 0.25);
+  --glass-shadow: 0 8px 32px rgba(0, 80, 30, 0.15), 0 2px 8px rgba(0,0,0,0.10);
+  --glass-topbar: rgba(240, 255, 248, 0.70);
+
+  /* UI colors */
   --navy: #0C3547;
   --navy-mid: #154E6B;
   --navy-lt: #1B6585;
@@ -57,10 +84,10 @@
   --red-dim: rgba(225, 29, 72, 0.1);
   --green: #059669;
   --green-dim: rgba(5, 150, 105, 0.1);
-  --purple: #F0846A;           /* coral fresco — reemplaza marrón */
+  --purple: #F0846A;
   --purple-dim: rgba(240, 132, 106, 0.14);
   --slate-50: #F7FDFB;
-  --slate-100: #EDFAF6;        /* fondo mint-cream */
+  --slate-100: #EDFAF6;
   --slate-200: #D5EDE8;
   --slate-300: #A8D5CC;
   --slate-400: #6BADA3;
@@ -70,23 +97,36 @@
   --slate-800: #0F3330;
 }
 [data-theme="bienestar"] .nav-item:hover {
-  background: rgba(13, 148, 136, 0.1) !important;
+  background: rgba(13, 148, 136, 0.15) !important;
   color: var(--teal) !important;
 }
 
 /* ═══════════════════════════════════════════════
-   TEMA 3 — CARBONO
-   Escala de grises con vida. Charcoal + Ámbar dorado.
-   Sin frío clínico — calidez y contraste.
+   TEMA 3 — MAR (Carbono)
+   Océano profundo · Celeste azul · Ámbar dorado
 ════════════════════════════════════════════════ */
 [data-theme="carbono"] {
+  /* Atmospheric background */
+  --body-bg: linear-gradient(150deg, #020B28 0%, #074085 22%, #0B6EB8 48%, #14A2D8 72%, #40C8F0 100%);
+  --blob-1: rgba(5, 40, 140, 0.60);
+  --blob-2: rgba(10, 120, 200, 0.45);
+  --blob-3: rgba(40, 200, 240, 0.35);
+
+  /* Glass system */
+  --glass-bg: rgba(238, 248, 255, 0.80);
+  --glass-sidebar: rgba(0, 5, 25, 0.62);
+  --glass-border: rgba(140, 210, 255, 0.28);
+  --glass-shadow: 0 8px 32px rgba(0, 60, 160, 0.18), 0 2px 8px rgba(0,0,0,0.12);
+  --glass-topbar: rgba(238, 248, 255, 0.70);
+
+  /* UI colors */
   --navy: #18181B;
   --navy-mid: #27272A;
   --navy-lt: #3F3F46;
-  --teal: #F59E0B;             /* ámbar dorado como acento principal */
+  --teal: #F59E0B;
   --teal-lt: #FBBF24;
   --teal-dim: rgba(245, 158, 11, 0.15);
-  --blue: #60A5FA;             /* azul vibrante sobre gris */
+  --blue: #60A5FA;
   --blue-lt: #93C5FD;
   --blue-dim: rgba(96, 165, 250, 0.15);
   --amber: #FB923C;
@@ -95,10 +135,10 @@
   --red-dim: rgba(248, 113, 113, 0.12);
   --green: #34D399;
   --green-dim: rgba(52, 211, 153, 0.12);
-  --purple: #A3E635;           /* lima eléctrico — acento vivo */
+  --purple: #A3E635;
   --purple-dim: rgba(163, 230, 53, 0.12);
   --slate-50: #FAFAFA;
-  --slate-100: #F4F4F5;        /* fondo zinc-100 */
+  --slate-100: #F4F4F5;
   --slate-200: #E4E4E7;
   --slate-300: #D1D1D6;
   --slate-400: #A1A1AA;
@@ -108,7 +148,7 @@
   --slate-800: #27272A;
 }
 [data-theme="carbono"] .nav-item:hover {
-  background: rgba(245, 158, 11, 0.1) !important;
+  background: rgba(245, 158, 11, 0.12) !important;
   color: var(--teal) !important;
 }
 
@@ -119,34 +159,51 @@
 body {
   margin: 0;
   padding: 0;
-  background: var(--slate-100);
+  background: var(--body-bg);
   color: var(--slate-800);
   font-family: system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* ═══ BLOB ANIMATIONS ═══════════════════════════ */
+@keyframes blobFloat1 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  33%  { transform: translate(45px, -65px) scale(1.08); }
+  66%  { transform: translate(-35px, 42px) scale(0.95); }
+}
+@keyframes blobFloat2 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  40%  { transform: translate(-55px, 35px) scale(1.06); }
+  70%  { transform: translate(38px, -48px) scale(0.96); }
+}
+@keyframes blobFloat3 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  30%  { transform: translate(32px, 55px) scale(1.10); }
+  60%  { transform: translate(-42px, -32px) scale(0.93); }
+}
+
+/* ═══ GLASS UTILITIES ════════════════════════════ */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
 }
 
 /* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--slate-300);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--slate-400);
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.40); }
 
 /* Command palette overlay */
 .cmd-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(11, 29, 53, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.40);
+  backdrop-filter: blur(8px);
   z-index: 999;
   display: flex;
   align-items: flex-start;
@@ -158,29 +215,31 @@ body {
 .cmd-box {
   width: 600px;
   max-width: 90vw;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 25px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.08);
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.30), 0 0 0 1px rgba(255,255,255,0.15);
   overflow: hidden;
   animation: slideUp 0.18s ease-out;
 }
 
 /* Table hover */
 .tbl-row:hover {
-  background: var(--slate-50) !important;
+  background: rgba(255,255,255,0.5) !important;
 }
 
 /* Sidebar item hover */
 .nav-item:hover {
-  background: rgba(0, 191, 166, 0.08) !important;
+  background: rgba(0, 191, 166, 0.12) !important;
   color: var(--teal) !important;
 }
 
 /* Card hover */
 .card-hover:hover {
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  transform: translateY(-1px);
-  transition: all 0.15s ease;
+  transform: translateY(-2px);
+  transition: all 0.2s ease;
 }
 
 /* Timeline styles */
@@ -193,7 +252,6 @@ body {
   flex-shrink: 0;
   margin-top: 4px;
 }
-
 .timeline-line {
   width: 2px;
   background: var(--slate-200);
@@ -202,49 +260,39 @@ body {
 
 @keyframes fadeIn {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }
-
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(-12px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Input focus */
-input:focus {
-  outline: none;
-}
+input:focus { outline: none; }
 
-/* Transition defaults */
 button {
   transition: opacity 0.15s, transform 0.1s;
 }
-
 button:active {
   transform: scale(0.98);
 }
 
-/* HC Timeline record expand */
 .hc-record {
   transition: all 0.2s ease;
 }
 
 /* Tooltip */
-.tooltip {
-  position: relative;
-}
+.tooltip { position: relative; }
 .tooltip::after {
   content: attr(data-tip);
   position: absolute;
   bottom: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  background: var(--slate-800);
+  background: var(--navy);
   color: white;
   font-size: 11px;
   padding: 4px 8px;
@@ -254,6 +302,4 @@ button:active {
   opacity: 0;
   transition: opacity 0.15s;
 }
-.tooltip:hover::after {
-  opacity: 1;
-}
+.tooltip:hover::after { opacity: 1; }

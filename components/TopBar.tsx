@@ -18,9 +18,7 @@ export function TopBar({ institution, onToggleSidebar, onOpenCommand, onOpenNoti
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      const hh = now.getHours().toString().padStart(2, "0");
-      const mm = now.getMinutes().toString().padStart(2, "0");
-      setClock(`${hh}:${mm}`);
+      setClock(`${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}`);
     };
     tick();
     const id = setInterval(tick, 10000);
@@ -30,8 +28,10 @@ export function TopBar({ institution, onToggleSidebar, onOpenCommand, onOpenNoti
   return (
     <header style={{
       height: 56,
-      background: "white",
-      borderBottom: "1px solid var(--slate-200)",
+      background: "var(--glass-topbar)",
+      backdropFilter: "blur(20px)",
+      WebkitBackdropFilter: "blur(20px)",
+      borderBottom: "1px solid rgba(255,255,255,0.18)",
       display: "flex",
       alignItems: "center",
       padding: "0 20px",
@@ -42,70 +42,89 @@ export function TopBar({ institution, onToggleSidebar, onOpenCommand, onOpenNoti
     }}>
       <button
         onClick={onToggleSidebar}
-        style={{ border: "none", background: "none", cursor: "pointer", padding: 6, borderRadius: 6, color: "var(--slate-400)", display: "flex" }}
+        style={{
+          border: "none", background: "rgba(255,255,255,0.15)", cursor: "pointer",
+          padding: 6, borderRadius: 8, color: "var(--navy)", display: "flex",
+          backdropFilter: "blur(8px)", transition: "background 0.15s",
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.28)")}
+        onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")}
       >
         <Menu size={18} />
       </button>
 
-      {/* Command Palette trigger */}
+      {/* Command trigger */}
       <button
         onClick={onOpenCommand}
         style={{
-          flex: 1, maxWidth: 400,
+          flex: 1, maxWidth: 420,
           display: "flex", alignItems: "center", gap: 8,
-          background: "var(--slate-50)", border: "1px solid var(--slate-200)",
-          borderRadius: 8, padding: "0 12px", height: 36,
+          background: "rgba(255,255,255,0.35)",
+          backdropFilter: "blur(8px)",
+          border: "1px solid rgba(255,255,255,0.30)",
+          borderRadius: "12px 8px 14px 10px / 10px 14px 8px 12px",
+          padding: "0 14px", height: 36,
           cursor: "pointer", textAlign: "left",
+          transition: "background 0.15s",
         }}
+        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.50)")}
+        onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.35)")}
       >
-        <Search size={14} color="var(--slate-400)" />
-        <span style={{ fontSize: 13, color: "var(--slate-400)", flex: 1 }}>
+        <Search size={14} color="var(--slate-500)" />
+        <span style={{ fontSize: 13, color: "var(--slate-500)", flex: 1 }}>
           Buscar paciente, turno, módulo...
         </span>
         <kbd style={{
-          background: "var(--slate-200)", color: "var(--slate-500)",
-          border: "1px solid var(--slate-300)", borderRadius: 5,
-          padding: "1px 6px", fontSize: 10, fontFamily: "system-ui", flexShrink: 0,
+          background: "rgba(255,255,255,0.50)",
+          color: "var(--slate-600)",
+          border: "1px solid rgba(255,255,255,0.40)",
+          borderRadius: 5, padding: "1px 6px",
+          fontSize: 10, fontFamily: "system-ui", flexShrink: 0,
         }}>
           Ctrl K
         </kbd>
       </button>
 
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-        {/* Live clock */}
         {clock && (
           <div style={{
             fontFamily: "Georgia, serif", fontSize: 14, fontWeight: 700,
-            color: "var(--navy)", letterSpacing: 0.5, opacity: 0.7,
+            color: "var(--navy)", letterSpacing: 0.5, opacity: 0.75,
             minWidth: 40, textAlign: "center",
           }}>
             {clock}
           </div>
         )}
 
-        {/* Notification bell */}
         <button
           onClick={onOpenNotifications}
           style={{
-            position: "relative", border: "none", background: "none",
-            cursor: "pointer", padding: 6, borderRadius: 6,
-            color: "var(--slate-400)", display: "flex",
+            position: "relative", border: "none",
+            background: "rgba(255,255,255,0.20)",
+            backdropFilter: "blur(8px)",
+            cursor: "pointer", padding: 7, borderRadius: 10,
+            color: "var(--navy)", display: "flex",
+            transition: "background 0.15s",
           }}
+          onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.38)")}
+          onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.20)")}
         >
-          <Bell size={18} />
+          <Bell size={17} />
           {notificationCount > 0 && (
             <span style={{
-              position: "absolute", top: 3, right: 3,
+              position: "absolute", top: 4, right: 4,
               width: 8, height: 8, borderRadius: "50%",
-              background: "var(--red)", border: "2px solid white",
+              background: "var(--red)", border: "2px solid rgba(255,255,255,0.8)",
             }} />
           )}
         </button>
 
-        {/* System status */}
         <div style={{
-          padding: "4px 10px", borderRadius: 99,
-          background: "rgba(16,185,129,0.1)", color: "var(--green)",
+          padding: "5px 12px", borderRadius: 99,
+          background: "rgba(16,185,129,0.15)",
+          backdropFilter: "blur(8px)",
+          border: "1px solid rgba(16,185,129,0.25)",
+          color: "var(--green)",
           fontSize: 10, fontWeight: 700,
           display: "flex", alignItems: "center", gap: 5,
         }}>
@@ -113,11 +132,13 @@ export function TopBar({ institution, onToggleSidebar, onOpenCommand, onOpenNoti
           SISTEMA ACTIVO
         </div>
 
-        {/* Institution badge */}
         {institution && (
           <div style={{
-            padding: "4px 10px", borderRadius: 99,
-            background: `${institution.color}18`, color: institution.color,
+            padding: "5px 12px", borderRadius: 99,
+            background: `${institution.color}20`,
+            backdropFilter: "blur(8px)",
+            border: `1px solid ${institution.color}30`,
+            color: institution.color,
             fontSize: 10, fontWeight: 700,
             display: "flex", alignItems: "center", gap: 5,
           }}>
