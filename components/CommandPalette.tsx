@@ -5,7 +5,7 @@ import { PATIENTS, APPOINTMENTS } from "@/lib/data";
 import type { NavId } from "@/lib/types";
 import { Search, User, Calendar, FileText, LayoutDashboard, Users, Shield, Receipt, ChevronRight } from "lucide-react";
 import { useCurrentUser } from "@/lib/hooks/useSupabase";
-import { createClient } from "@/lib/supabase/client";
+import { fetchPatientSearch } from "@/app/actions/fetch";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -43,20 +43,13 @@ export function CommandPalette({ open, onClose, onNav, onSelectPatient }: Comman
   const listRef = useRef<HTMLDivElement>(null);
   const { profile } = useCurrentUser();
   const tenantId = (profile as any)?.tenantId ?? null;
-  const supabase = createClient();
 
-  // Debounced live patient search
+  // Debounced live patient search via admin client
   useEffect(() => {
     if (!tenantId || !query.trim()) { setDbPatients([]); return; }
     const timer = setTimeout(async () => {
-      const q = query.trim();
-      const { data } = await (supabase as any)
-        .from("patients")
-        .select("id, firstName, lastName, dni, birthDate, sex")
-        .eq("tenantId", tenantId)
-        .or(`lastName.ilike.%${q}%,firstName.ilike.%${q}%,dni.ilike.%${q}%`)
-        .limit(5);
-      setDbPatients(data ?? []);
+      const data = await fetchPatientSearch(query.trim());
+      setDbPatients(data);
     }, 200);
     return () => clearTimeout(timer);
   }, [query, tenantId]);

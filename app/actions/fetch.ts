@@ -2,6 +2,29 @@
 
 import { getAuthContext } from "./_helpers";
 
+export async function fetchPatientById(patientId: string) {
+  const ctx = await getAuthContext();
+  if (!ctx) return null;
+  const { data } = await ctx.db
+    .from("patients")
+    .select("*")
+    .eq("id", patientId)
+    .single();
+  return data ?? null;
+}
+
+export async function fetchPatientSearch(query: string) {
+  const ctx = await getAuthContext();
+  if (!ctx) return [];
+  const { data } = await (ctx.db as any)
+    .from("patients")
+    .select("id, firstName, lastName, dni, birthDate, sex")
+    .eq("tenantId", ctx.profile.tenantId)
+    .or(`lastName.ilike.%${query}%,firstName.ilike.%${query}%,dni.ilike.%${query}%`)
+    .limit(5);
+  return data ?? [];
+}
+
 export async function fetchPatients(search?: string) {
   const ctx = await getAuthContext();
   if (!ctx) return [];

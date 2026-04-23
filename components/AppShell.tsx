@@ -23,6 +23,7 @@ import { NewConsultationModal } from "./modals/NewConsultationModal";
 import { NewPatientModal } from "./modals/NewPatientModal";
 import { KeyboardShortcutsModal } from "./modals/KeyboardShortcutsModal";
 import { signOut } from "@/app/actions/auth";
+import { fetchPatientById } from "@/app/actions/fetch";
 import { PATIENTS, INSTITUTIONS } from "@/lib/data";
 import type { Phase, NavId, Institution, Patient, LoginUser } from "@/lib/types";
 import type { User } from "@supabase/supabase-js";
@@ -131,11 +132,9 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
     // Try mock first
     const mockPatient = PATIENTS.find(pt => pt.id === patientId);
     if (mockPatient) { setSelectedPatient(mockPatient); setActiveNav("patients"); return; }
-    // Fetch from Supabase for real DB patients
+    // Fetch from DB via admin client
     try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      const { data } = await (supabase as any).from("patients").select("*").eq("id", patientId).single();
+      const data = await fetchPatientById(patientId);
       if (data) {
         const birthYear = data.birthDate ? new Date(data.birthDate).getFullYear() : null;
         const age = birthYear ? new Date().getFullYear() - birthYear : 0;
