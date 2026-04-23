@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronRight, Building2 } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { useCurrentUser, useTenants } from "@/lib/hooks/useSupabase";
 import { INSTITUTIONS } from "@/lib/data";
 import type { Institution } from "@/lib/types";
 
@@ -14,7 +15,17 @@ const TYPE_LABEL: Record<string, string> = {
   HOSPITAL: "Hospital",
 };
 
+const TYPE_ICON: Record<string,string> = { HOSPITAL:"🏥",CLINICA:"🏨",CONSULTORIO:"🩺",ESTETICA:"✨",ESTETICO:"✨" };
+const COLORS = ["#00BFA6","#2563EB","#8B5CF6","#F59E0B","#EF4444","#06B6D4"];
+
 export function InstitutionView({ onSelect }: InstitutionViewProps) {
+  const { profile } = useCurrentUser();
+  const isLive = !!(profile as any)?.tenantId;
+  const { tenants: dbTenants } = useTenants();
+  const userName = (profile as any) ? ((profile as any).firstName??"")+" "+((profile as any).lastName??"") : "Usuario";
+  const displayInstitutions: Institution[] = isLive && dbTenants.length > 0
+    ? dbTenants.map((t:any,i:number)=>({ id:t.id, name:t.name, type:t.type??"CLINICA", tenant:t.slug??t.id.slice(0,8), color:t.primaryColor??COLORS[i%COLORS.length], icon:TYPE_ICON[t.type??"CLINICA"]??"🏥" }))
+    : INSTITUTIONS;
   return (
     <div style={{
       minHeight: "100vh",
@@ -34,18 +45,19 @@ export function InstitutionView({ onSelect }: InstitutionViewProps) {
       <div style={{ width: 520, position: "relative", zIndex: 1 }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ fontSize: 13, color: "var(--teal)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
-            Bienvenido, Harvey Specter
+            Bienvenido{userName?.trim() ? `, ${userName.trim()}` : ""}
           </div>
           <h1 style={{ margin: 0, fontFamily: "Georgia, serif", fontSize: 28, fontWeight: 700, color: "white", letterSpacing: -0.5 }}>
             ¿Desde qué institución trabajás hoy?
           </h1>
           <p style={{ margin: "8px 0 0", color: "var(--slate-400)", fontSize: 13 }}>
-            Tenés acceso a {INSTITUTIONS.length} instituciones · El contexto de datos cambia por institución
+            {displayInstitutions.length} institución{displayInstitutions.length !== 1 ? "es" : ""} disponible{displayInstitutions.length !== 1 ? "s" : ""}
+            {isLive && <span style={{ color: "#059669", fontWeight: 600, marginLeft: 6 }}>· LIVE DB</span>}
           </p>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {INSTITUTIONS.map((inst, i) => (
+          {displayInstitutions.map((inst) => (
             <button
               key={inst.id}
               onClick={() => onSelect(inst)}
