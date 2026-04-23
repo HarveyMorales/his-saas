@@ -18,10 +18,13 @@ import { SharingView } from "./views/SharingView";
 import { AuditView } from "./views/AuditView";
 import { UsersView } from "./views/UsersView";
 import { ReportesView } from "./views/ReportesView";
+import { SettingsView } from "./views/SettingsView";
 import { AdminView } from "./views/admin/AdminView";
 import { NewConsultationModal } from "./modals/NewConsultationModal";
 import { NewPatientModal } from "./modals/NewPatientModal";
 import { KeyboardShortcutsModal } from "./modals/KeyboardShortcutsModal";
+import { ThemeSelector } from "./ThemeSelector";
+import { useTheme } from "@/lib/theme-context";
 import { signOut } from "@/app/actions/auth";
 import { fetchPatientById } from "@/app/actions/fetch";
 import { PATIENTS, INSTITUTIONS } from "@/lib/data";
@@ -34,6 +37,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) {
+  const { isFirstTime } = useTheme();
   const [phase, setPhase] = useState<Phase>(supabaseUser ? "app" : "login");
   const [currentUser, setCurrentUser] = useState<LoginUser | null>(null);
   const [institution, setInstitution] = useState<Institution | null>(() => {
@@ -186,6 +190,11 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
     return <AdminView currentUser={displayUser} onLogout={handleLogout} />;
   }
 
+  // ── First-time theme selector ────────────────────────────────────────────────
+  if (isFirstTime && phase === "app") {
+    return <ThemeSelector onDone={() => {}} />;
+  }
+
   // ── Normal app ───────────────────────────────────────────────────────────────
   const renderView = () => {
     if (activeNav === "patients" || activeNav === "records") {
@@ -216,6 +225,7 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
     if (activeNav === "audit") return <AuditView />;
     if (activeNav === "users") return <UsersView />;
     if (activeNav === "reportes") return <ReportesView />;
+    if (activeNav === "settings") return <SettingsView />;
     return <DashboardView institution={institution} onNav={handleNav} />;
   };
 

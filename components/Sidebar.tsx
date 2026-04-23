@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, Users, FileText, Calendar, Shield, Receipt, Share2, UserCog, ClipboardList, Stethoscope, BarChart2 } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Calendar, Shield, Receipt, Share2, UserCog, ClipboardList, Stethoscope, BarChart2, Settings } from "lucide-react";
 import type { Institution, NavId, LoginUser } from "@/lib/types";
 
 const NAV_ITEMS: { id: NavId; icon: React.ReactNode; label: string; badge?: number }[] = [
@@ -15,6 +15,7 @@ const NAV_ITEMS: { id: NavId; icon: React.ReactNode; label: string; badge?: numb
   { id: "users", icon: <UserCog size={16} />, label: "Usuarios / RBAC" },
   { id: "audit", icon: <Stethoscope size={16} />, label: "Auditoría" },
   { id: "reportes", icon: <BarChart2 size={16} />, label: "Reportes" },
+  { id: "settings", icon: <Settings size={16} />, label: "Configuración" },
 ];
 
 interface SidebarProps {

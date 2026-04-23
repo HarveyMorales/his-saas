@@ -2,7 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* ═══════════════════════════════════════════════
+   TEMA 1 — HIS CLÁSICO (default)
+   Navy profundo + Teal + Sky blue (sin violeta)
+════════════════════════════════════════════════ */
+:root,
+[data-theme="clasico"] {
   --navy: #0B1D35;
   --navy-mid: #132540;
   --navy-lt: #1E3A5F;
@@ -18,8 +23,8 @@
   --red-dim: rgba(239, 68, 68, 0.1);
   --green: #10B981;
   --green-dim: rgba(16, 185, 129, 0.1);
-  --purple: #8B5CF6;
-  --purple-dim: rgba(139, 92, 246, 0.1);
+  --purple: #0EA5E9;           /* sky azul — reemplaza violeta */
+  --purple-dim: rgba(14, 165, 233, 0.12);
   --slate-50: #F8FAFC;
   --slate-100: #F1F5F9;
   --slate-200: #E2E8F0;
@@ -29,6 +34,82 @@
   --slate-600: #475569;
   --slate-700: #334155;
   --slate-800: #1E293B;
+}
+
+/* ═══════════════════════════════════════════════
+   TEMA 2 — BIENESTAR
+   Para estéticas, spas, consultorios wellness.
+   Fondo mint-cream · Coral fresco · Teal cálido
+════════════════════════════════════════════════ */
+[data-theme="bienestar"] {
+  --navy: #0C3547;
+  --navy-mid: #154E6B;
+  --navy-lt: #1B6585;
+  --teal: #0D9488;
+  --teal-lt: #14B8A6;
+  --teal-dim: rgba(13, 148, 136, 0.12);
+  --blue: #0284C7;
+  --blue-lt: #0EA5E9;
+  --blue-dim: rgba(2, 132, 199, 0.12);
+  --amber: #D97706;
+  --amber-dim: rgba(217, 119, 6, 0.12);
+  --red: #E11D48;
+  --red-dim: rgba(225, 29, 72, 0.1);
+  --green: #059669;
+  --green-dim: rgba(5, 150, 105, 0.1);
+  --purple: #F0846A;           /* coral fresco — reemplaza marrón */
+  --purple-dim: rgba(240, 132, 106, 0.14);
+  --slate-50: #F7FDFB;
+  --slate-100: #EDFAF6;        /* fondo mint-cream */
+  --slate-200: #D5EDE8;
+  --slate-300: #A8D5CC;
+  --slate-400: #6BADA3;
+  --slate-500: #3D8277;
+  --slate-600: #2A6660;
+  --slate-700: #1E4F4A;
+  --slate-800: #0F3330;
+}
+[data-theme="bienestar"] .nav-item:hover {
+  background: rgba(13, 148, 136, 0.1) !important;
+  color: var(--teal) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   TEMA 3 — CARBONO
+   Escala de grises con vida. Charcoal + Ámbar dorado.
+   Sin frío clínico — calidez y contraste.
+════════════════════════════════════════════════ */
+[data-theme="carbono"] {
+  --navy: #18181B;
+  --navy-mid: #27272A;
+  --navy-lt: #3F3F46;
+  --teal: #F59E0B;             /* ámbar dorado como acento principal */
+  --teal-lt: #FBBF24;
+  --teal-dim: rgba(245, 158, 11, 0.15);
+  --blue: #60A5FA;             /* azul vibrante sobre gris */
+  --blue-lt: #93C5FD;
+  --blue-dim: rgba(96, 165, 250, 0.15);
+  --amber: #FB923C;
+  --amber-dim: rgba(251, 146, 60, 0.15);
+  --red: #F87171;
+  --red-dim: rgba(248, 113, 113, 0.12);
+  --green: #34D399;
+  --green-dim: rgba(52, 211, 153, 0.12);
+  --purple: #A3E635;           /* lima eléctrico — acento vivo */
+  --purple-dim: rgba(163, 230, 53, 0.12);
+  --slate-50: #FAFAFA;
+  --slate-100: #F4F4F5;        /* fondo zinc-100 */
+  --slate-200: #E4E4E7;
+  --slate-300: #D1D1D6;
+  --slate-400: #A1A1AA;
+  --slate-500: #71717A;
+  --slate-600: #52525B;
+  --slate-700: #3F3F46;
+  --slate-800: #27272A;
+}
+[data-theme="carbono"] .nav-item:hover {
+  background: rgba(245, 158, 11, 0.1) !important;
+  color: var(--teal) !important;
 }
 
 * {
