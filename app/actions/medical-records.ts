@@ -1,5 +1,6 @@
 "use server";
 
+import { createEntityId } from "./_ids";
 import { getAuthContext } from "./_helpers";
 
 export async function getMedicalRecords(patientId: string) {
@@ -46,6 +47,7 @@ export async function createMedicalRecord(payload: {
   const { data, error } = await ctx.db
     .from("medical_records")
     .insert({
+      id: createEntityId(),
       ...payload,
       tenantId: p.tenantId,
       authorId: p.id,

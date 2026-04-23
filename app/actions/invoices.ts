@@ -22,6 +22,7 @@ export async function createInvoice(payload: {
   const { data: inv, error: invErr } = await ctx.db
     .from("invoices")
     .insert({
+      id: crypto.randomUUID(),
       tenantId: ctx.profile.tenantId,
       patientId: payload.patientId ?? null,
       insuranceProviderId: payload.insuranceProviderId ?? null,
@@ -37,6 +38,7 @@ export async function createInvoice(payload: {
   if (invErr) return { error: invErr.message };
 
   const items = payload.items.map(i => ({
+    id: crypto.randomUUID(),
     tenantId: ctx.profile.tenantId,
     invoiceId: inv.id,
     medicalPracticeId: i.medicalPracticeId ?? null,
