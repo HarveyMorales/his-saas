@@ -5,7 +5,7 @@ import { Sparkline } from "@/components/ui/Sparkline";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { APPOINTMENTS, GUARDS, HC_SHARE_REQUESTS } from "@/lib/data";
-import { useCurrentUser, useAppointments, usePatients } from "@/lib/hooks/useSupabase";
+import { useCurrentUser, useAppointments, usePatients, useAdmissions, useInvoices } from "@/lib/hooks/useSupabase";
 import type { Institution, NavId } from "@/lib/types";
 import { TrendingUp, Users, Calendar, Activity, DollarSign, AlertTriangle, ChevronRight } from "lucide-react";
 
@@ -24,6 +24,8 @@ export function DashboardView({ institution, onNav }: DashboardViewProps) {
 
   const { appointments: dbAppts, loading: apptLoading } = useAppointments(tenantId, todayISO);
   const { patients: dbPatients, loading: patientsLoading } = usePatients(tenantId);
+  const { admissions: dbAdmissions } = useAdmissions(tenantId);
+  const { invoices: dbInvoices } = useInvoices(tenantId);
 
   const apptCount = isLive ? dbAppts.length : APPOINTMENTS.length;
   const patientCount = isLive ? dbPatients.length : 1284;
@@ -34,8 +36,8 @@ export function DashboardView({ institution, onNav }: DashboardViewProps) {
   const STATS = [
     { label: "Pacientes activos", value: patientsLoading ? "…" : patientCount.toLocaleString(), delta: "registrados", icon: <Users size={18} />, color: "#00BFA6", data: [30,45,38,60,52,72,65,82,75,92] },
     { label: "Turnos hoy", value: apptLoading ? "…" : String(apptCount), delta: `${pendingAppts} pendientes`, icon: <Calendar size={18} />, color: "#2563EB", data: [20,35,25,50,40,65,55,75,68,85] },
-    { label: "Guardias activas", value: "3", delta: "2 médicos en turno", icon: <Activity size={18} />, color: "#F59E0B", data: [1,2,1,3,2,3,2,4,3,3] },
-    { label: "Facturación mes", value: "$284.5K", delta: "+18% vs ant.", icon: <DollarSign size={18} />, color: "#8B5CF6", data: [60,75,65,85,70,90,82,95,88,100] },
+    { label: "Guardias activas", value: isLive ? String(dbAdmissions.filter((a: any) => a.status === "ACTIVE").length) : "3", delta: isLive ? `${dbAdmissions.length} total` : "2 médicos en turno", icon: <Activity size={18} />, color: "#F59E0B", data: [1,2,1,3,2,3,2,4,3,3] },
+    { label: "Facturación mes", value: isLive ? `$${(dbInvoices.reduce((s: number, i: any) => s + Number(i.total ?? 0), 0) / 1000).toFixed(1)}K` : "$284.5K", delta: isLive ? `${dbInvoices.filter((i: any) => i.status === "PENDING").length} pendientes` : "+18% vs ant.", icon: <DollarSign size={18} />, color: "#8B5CF6", data: [60,75,65,85,70,90,82,95,88,100] },
   ];
 
   // For appointments table: show real data when live

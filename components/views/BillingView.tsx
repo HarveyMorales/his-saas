@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, FileText, CheckCircle, Clock, XCircle, MoreVertical } from "lucide-react";
+import { Plus, FileText, CheckCircle, Clock, XCircle, Download } from "lucide-react";
+import { printInvoice } from "@/lib/pdf";
 import { BILLING } from "@/lib/data";
 import { useCurrentUser, useBillingItems, useInvoices } from "@/lib/hooks/useSupabase";
 import { updateInvoiceStatus } from "@/app/actions/invoices";
@@ -244,6 +245,11 @@ export function BillingView() {
                               Marcar cobrado
                             </button>
                           )}
+                          <button
+                            onClick={() => printInvoice(inv)}
+                            style={{ padding: "5px 10px", borderRadius: 6, background: "var(--slate-100)", color: "var(--slate-600)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600 }}>
+                            <Download size={12} /> PDF
+                          </button>
                         </div>
                       </div>
                     </div>

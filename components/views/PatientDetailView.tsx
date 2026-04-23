@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Share2, Plus, ChevronDown, ChevronUp, Lock, FileText, Calendar, CreditCard, Paperclip, Activity, Pill, AlertTriangle, Edit2 } from "lucide-react";
+import { ArrowLeft, Share2, Plus, ChevronDown, ChevronUp, Lock, FileText, Calendar, CreditCard, Paperclip, Activity, Pill, AlertTriangle, Edit2, Download } from "lucide-react";
+import { printMedicalRecord } from "@/lib/pdf";
 import { EditPatientModal } from "@/components/modals/EditPatientModal";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
@@ -61,7 +62,8 @@ function toMedicalRecord(r: any): MedicalRecord {
       temp: r.vitalsTempC ? `${r.vitalsTempC}°C` : undefined,
       weight: r.vitalsWeightKg ? `${r.vitalsWeightKg} kg` : undefined,
     },
-  };
+    _raw: r,
+  } as any;
 }
 
 export function PatientDetailView({ patient, onBack, onNav, onNewConsultation, consultationRefreshKey }: PatientDetailViewProps) {
@@ -342,8 +344,15 @@ export function PatientDetailView({ patient, onBack, onNav, onNewConsultation, c
                                   </div>
                                 )}
                               </div>
-                              <div style={{ color: "var(--slate-400)", flexShrink: 0 }}>
-                                {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); printMedicalRecord((r as any)._raw ?? r, patient); }}
+                                  style={{ background: "var(--slate-100)", border: "none", borderRadius: 6, padding: "4px 8px", cursor: "pointer", color: "var(--slate-500)", display: "flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 600 }}>
+                                  <Download size={11} /> PDF
+                                </button>
+                                <div style={{ color: "var(--slate-400)" }}>
+                                  {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </div>
                               </div>
                             </div>
 
