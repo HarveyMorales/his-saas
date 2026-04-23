@@ -5,7 +5,7 @@ export interface LoginUser {
   email: string;
   password: string;
   name: string;
-  role: "MEDICO" | "RECEPCION" | "FACTURACION" | "ADMIN_IT" | "ADMIN_INST";
+  role: "MEDICO" | "ENFERMERO" | "TECNICO" | "CAMILLERO" | "RECEPCION" | "ADMISION" | "FACTURACION" | "ADMIN_INST" | "TENANT_ADMIN" | "SUPER_ADMIN" | "ADMIN_IT";
   avatar: string;
   institution: string | null;
   institutionName: string | null;
@@ -38,7 +38,7 @@ export interface Institution {
 export interface UserRole {
   id: string;
   name: string;
-  role: "MEDICO" | "RECEPCION" | "FACTURACION" | "ADMIN_IT" | "ADMIN_INST";
+  role: "MEDICO" | "ENFERMERO" | "TECNICO" | "CAMILLERO" | "RECEPCION" | "ADMISION" | "FACTURACION" | "ADMIN_INST" | "TENANT_ADMIN" | "SUPER_ADMIN" | "ADMIN_IT";
   avatar: string;
   perms: string[];
 }

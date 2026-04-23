@@ -2,6 +2,7 @@
 
 import { LayoutDashboard, Users, FileText, Calendar, Shield, Receipt, Share2, UserCog, ClipboardList, Stethoscope, BarChart2, Settings } from "lucide-react";
 import type { Institution, NavId, LoginUser } from "@/lib/types";
+import { getVisibleNav } from "@/lib/permissions";
 
 const NAV_ITEMS: { id: NavId; icon: React.ReactNode; label: string; badge?: number }[] = [
   { id: "dashboard",    icon: <LayoutDashboard size={16} />, label: "Dashboard" },
@@ -33,6 +34,9 @@ export function Sidebar({ open, activeNav, institution, currentUser, onNav, onCh
     ? `${currentUser.name.split(" ")[0]?.[0] ?? ""}${currentUser.name.split(" ")[1]?.[0] ?? ""}`.toUpperCase()
     : "HS";
   const avatarInitials = (currentUser?.avatar ?? rawInitials) || "HS";
+
+  const allowedNavIds = getVisibleNav(currentUser?.role);
+  const visibleItems = NAV_ITEMS.filter(n => allowedNavIds.includes(n.id));
 
   return (
     <aside style={{
@@ -107,7 +111,7 @@ export function Sidebar({ open, activeNav, institution, currentUser, onNav, onCh
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: "10px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
-        {NAV_ITEMS.map(item => {
+        {visibleItems.map(item => {
           const isActive = activeNav === item.id;
           return (
             <button

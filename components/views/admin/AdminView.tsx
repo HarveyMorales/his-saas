@@ -20,11 +20,17 @@ interface AdminViewProps {
 }
 
 const ROLE_CFG: Record<LoginUser["role"], { label: string; color: string; bg: string }> = {
-  MEDICO:      { label: "Médico",       color: "#00BFA6", bg: "rgba(0,191,166,0.12)" },
-  RECEPCION:   { label: "Recepción",    color: "#2563EB", bg: "rgba(37,99,235,0.12)" },
-  FACTURACION: { label: "Facturación",  color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
-  ADMIN_INST:  { label: "Admin Inst.",  color: "#8B5CF6", bg: "rgba(139,92,246,0.12)" },
-  ADMIN_IT:    { label: "IT Admin",     color: "#EF4444", bg: "rgba(239,68,68,0.12)" },
+  MEDICO:       { label: "Médico",        color: "#00BFA6", bg: "rgba(0,191,166,0.12)" },
+  ENFERMERO:    { label: "Enfermero/a",   color: "#06B6D4", bg: "rgba(6,182,212,0.12)" },
+  TECNICO:      { label: "Técnico/a",     color: "#6366F1", bg: "rgba(99,102,241,0.12)" },
+  CAMILLERO:    { label: "Camillero/a",   color: "#84CC16", bg: "rgba(132,204,22,0.12)" },
+  RECEPCION:    { label: "Recepción",     color: "#2563EB", bg: "rgba(37,99,235,0.12)" },
+  ADMISION:     { label: "Admisión",      color: "#0EA5E9", bg: "rgba(14,165,233,0.12)" },
+  FACTURACION:  { label: "Facturación",   color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
+  ADMIN_INST:   { label: "Admin Inst.",   color: "#8B5CF6", bg: "rgba(139,92,246,0.12)" },
+  TENANT_ADMIN: { label: "Admin Tenant",  color: "#EC4899", bg: "rgba(236,72,153,0.12)" },
+  SUPER_ADMIN:  { label: "Super Admin",   color: "#EF4444", bg: "rgba(239,68,68,0.12)" },
+  ADMIN_IT:     { label: "IT Admin",      color: "#EF4444", bg: "rgba(239,68,68,0.12)" },
 };
 
 function RoleBadge({ role }: { role: LoginUser["role"] }) {

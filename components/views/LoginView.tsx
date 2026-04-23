@@ -10,11 +10,17 @@ interface LoginViewProps {
 }
 
 const ROLE_LABELS: Record<LoginUser["role"], { label: string; color: string }> = {
-  MEDICO:      { label: "Médico",       color: "#00BFA6" },
-  RECEPCION:   { label: "Recepción",    color: "#2563EB" },
-  FACTURACION: { label: "Facturación",  color: "#F59E0B" },
-  ADMIN_INST:  { label: "Admin Inst.",  color: "#8B5CF6" },
-  ADMIN_IT:    { label: "IT Admin",     color: "#EF4444" },
+  MEDICO:       { label: "Médico",        color: "#00BFA6" },
+  ENFERMERO:    { label: "Enfermero/a",   color: "#06B6D4" },
+  TECNICO:      { label: "Técnico/a",     color: "#6366F1" },
+  CAMILLERO:    { label: "Camillero/a",   color: "#84CC16" },
+  RECEPCION:    { label: "Recepción",     color: "#2563EB" },
+  ADMISION:     { label: "Admisión",      color: "#0EA5E9" },
+  FACTURACION:  { label: "Facturación",   color: "#F59E0B" },
+  ADMIN_INST:   { label: "Admin Inst.",   color: "#8B5CF6" },
+  TENANT_ADMIN: { label: "Admin Tenant",  color: "#EC4899" },
+  SUPER_ADMIN:  { label: "Super Admin",   color: "#EF4444" },
+  ADMIN_IT:     { label: "IT Admin",      color: "#EF4444" },
 };
 
 export function LoginView({ onLogin }: LoginViewProps) {
