@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, Users, FileText, Calendar, Shield, Receipt, Share2, UserCog, ClipboardList, Stethoscope, Building2 } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Calendar, Shield, Receipt, Share2, UserCog, ClipboardList, Stethoscope, BarChart2 } from "lucide-react";
 import type { Institution, NavId, LoginUser } from "@/lib/types";
 
 const NAV_ITEMS: { id: NavId; icon: React.ReactNode; label: string; badge?: number }[] = [
@@ -14,6 +14,7 @@ const NAV_ITEMS: { id: NavId; icon: React.ReactNode; label: string; badge?: numb
   { id: "sharing", icon: <Share2 size={16} />, label: "Compartir HC", badge: 1 },
   { id: "users", icon: <UserCog size={16} />, label: "Usuarios / RBAC" },
   { id: "audit", icon: <Stethoscope size={16} />, label: "Auditoría" },
+  { id: "reportes", icon: <BarChart2 size={16} />, label: "Reportes" },
 ];
 
 interface SidebarProps {

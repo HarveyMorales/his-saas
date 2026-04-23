@@ -22,7 +22,8 @@ export type NavId =
   | "billing"
   | "sharing"
   | "users"
-  | "audit";
+  | "audit"
+  | "reportes";
 
 export interface Institution {
   id: string;

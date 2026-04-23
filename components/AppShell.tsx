@@ -17,6 +17,7 @@ import { BillingView } from "./views/BillingView";
 import { SharingView } from "./views/SharingView";
 import { AuditView } from "./views/AuditView";
 import { UsersView } from "./views/UsersView";
+import { ReportesView } from "./views/ReportesView";
 import { AdminView } from "./views/admin/AdminView";
 import { NewConsultationModal } from "./modals/NewConsultationModal";
 import { NewPatientModal } from "./modals/NewPatientModal";
@@ -215,6 +216,7 @@ export function AppShell({ supabaseUser, supabaseProfile }: AppShellProps = {}) 
     if (activeNav === "sharing") return <SharingView />;
     if (activeNav === "audit") return <AuditView />;
     if (activeNav === "users") return <UsersView />;
+    if (activeNav === "reportes") return <ReportesView />;
     return <DashboardView institution={institution} onNav={handleNav} />;
   };
 
