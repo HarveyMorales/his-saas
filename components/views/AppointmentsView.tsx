@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Plus, Play, CheckCircle, XCircle, Eye, RefreshCw } from "lucide-react";
+import { Plus, Play, CheckCircle, XCircle, RefreshCw, LayoutGrid, List, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { NewAppointmentModal } from "@/components/modals/NewAppointmentModal";
@@ -52,6 +52,94 @@ function toAppointment(a: any): Appointment & { _dbStatus: string } {
   };
 }
 
+const DAY_NAMES = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+const HOURS = Array.from({ length: 13 }, (_, i) => i + 7); // 7am to 7pm
+
+const STATUS_COLOR: Record<string, string> = {
+  SCHEDULED: "#2563EB", CONFIRMED: "#059669", IN_PROGRESS: "#F59E0B",
+  COMPLETED: "#10B981", CANCELLED: "#EF4444", PENDIENTE: "#2563EB",
+  "EN CURSO": "#F59E0B", CONFIRMADO: "#10B981", CANCELADO: "#EF4444",
+};
+
+function WeekView({ appts, weekOffset, onWeekOffset }: { appts: any[]; weekOffset: number; onWeekOffset: (n: number) => void }) {
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  const dayOfWeek = today.getDay();
+  startOfWeek.setDate(today.getDate() - dayOfWeek + weekOffset * 7);
+
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(startOfWeek);
+    d.setDate(startOfWeek.getDate() + i);
+    return d;
+  });
+
+  const weekLabel = `${days[1].toLocaleDateString("es-AR", { day: "numeric", month: "short" })} — ${days[5].toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" })}`;
+
+  const getAppts = (day: Date) => appts.filter((a: any) => {
+    const d = a.scheduledAt ? new Date(a.scheduledAt) : null;
+    return d && d.toDateString() === day.toDateString();
+  });
+
+  return (
+    <div style={{ background: "white", borderRadius: 14, border: "1px solid var(--slate-200)", overflow: "hidden" }}>
+      <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--slate-100)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: "var(--navy)" }}>Vista Semanal</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={() => onWeekOffset(weekOffset - 1)} style={{ border: "none", background: "var(--slate-100)", borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}><ChevronLeft size={14} /></button>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--slate-600)", minWidth: 160, textAlign: "center" }}>{weekLabel}</span>
+          <button onClick={() => onWeekOffset(weekOffset + 1)} style={{ border: "none", background: "var(--slate-100)", borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}><ChevronRight size={14} /></button>
+          {weekOffset !== 0 && <button onClick={() => onWeekOffset(0)} style={{ border: "none", background: "var(--teal)", color: "white", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>Hoy</button>}
+        </div>
+      </div>
+      <div style={{ overflowX: "auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "50px repeat(7, 1fr)", minWidth: 700 }}>
+          {/* Header */}
+          <div style={{ borderBottom: "1px solid var(--slate-200)" }} />
+          {days.map((d, i) => {
+            const isToday = d.toDateString() === today.toDateString();
+            return (
+              <div key={i} style={{ padding: "10px 8px", textAlign: "center", borderBottom: "1px solid var(--slate-200)", borderLeft: "1px solid var(--slate-100)", background: isToday ? "rgba(37,99,235,0.04)" : undefined }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--slate-400)", textTransform: "uppercase" }}>{DAY_NAMES[d.getDay()]}</div>
+                <div style={{ fontFamily: "Georgia, serif", fontSize: 18, fontWeight: 700, color: isToday ? "#2563EB" : "var(--navy)", marginTop: 2 }}>{d.getDate()}</div>
+                {getAppts(d).length > 0 && <div style={{ fontSize: 9, fontWeight: 700, color: "#2563EB", marginTop: 2 }}>{getAppts(d).length} turno{getAppts(d).length !== 1 ? "s" : ""}</div>}
+              </div>
+            );
+          })}
+          {/* Time rows */}
+          {HOURS.map(h => (
+            <>
+              <div key={`h${h}`} style={{ padding: "0 6px", borderBottom: "1px solid var(--slate-50)", display: "flex", alignItems: "flex-start", paddingTop: 4 }}>
+                <span style={{ fontSize: 10, color: "var(--slate-400)", fontWeight: 600 }}>{h}:00</span>
+              </div>
+              {days.map((d, di) => {
+                const isToday = d.toDateString() === today.toDateString();
+                const slotAppts = appts.filter((a: any) => {
+                  const dt = a.scheduledAt ? new Date(a.scheduledAt) : null;
+                  return dt && dt.toDateString() === d.toDateString() && dt.getHours() === h;
+                });
+                return (
+                  <div key={`${h}-${di}`} style={{ minHeight: 44, borderBottom: "1px solid var(--slate-50)", borderLeft: "1px solid var(--slate-100)", background: isToday ? "rgba(37,99,235,0.02)" : undefined, padding: 2 }}>
+                    {slotAppts.map((a: any, ai: number) => {
+                      const name = a.patients ? `${a.patients.lastName}, ${a.patients.firstName}` : (a.patient ?? "Paciente");
+                      const color = STATUS_COLOR[a.status] ?? "#2563EB";
+                      return (
+                        <div key={ai} style={{ background: `${color}15`, borderLeft: `3px solid ${color}`, borderRadius: 4, padding: "3px 6px", marginBottom: 2, fontSize: 10, lineHeight: 1.4 }}>
+                          <div style={{ fontWeight: 700, color, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                          <div style={{ color: "var(--slate-500)", fontSize: 9 }}>{a.users ? `Dr. ${a.users.lastName}` : (a.doctor ?? "")}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AppointmentsView() {
   const { toast } = useToast();
   const { profile, loading: profileLoading } = useCurrentUser();
@@ -60,6 +148,8 @@ export function AppointmentsView() {
   const { appointments: dbAppts, loading: apptLoading, refetch } = useAppointments(tenantId, today);
   const [newOpen, setNewOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "week">("list");
+  const [weekOffset, setWeekOffset] = useState(0);
 
   const isLive = !!tenantId;
 
@@ -126,25 +216,31 @@ export function AppointmentsView() {
             )}
           </p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {/* View toggle */}
+          <div style={{ display: "flex", background: "var(--slate-100)", borderRadius: 8, padding: 2 }}>
+            <button onClick={() => setViewMode("list")} style={{ padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", background: viewMode === "list" ? "white" : "transparent", color: viewMode === "list" ? "var(--navy)" : "var(--slate-500)", fontWeight: 600, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+              <List size={13} /> Lista
+            </button>
+            <button onClick={() => setViewMode("week")} style={{ padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", background: viewMode === "week" ? "white" : "transparent", color: viewMode === "week" ? "var(--navy)" : "var(--slate-500)", fontWeight: 600, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+              <LayoutGrid size={13} /> Semana
+            </button>
+          </div>
           {isLive && (
-            <button
-              onClick={refetch}
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, background: "white", color: "var(--slate-600)", border: "1px solid var(--slate-200)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
-            >
+            <button onClick={refetch} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, background: "white", color: "var(--slate-600)", border: "1px solid var(--slate-200)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
               <RefreshCw size={14} /> Actualizar
             </button>
           )}
-          <button
-            onClick={() => setNewOpen(true)}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 18px", borderRadius: 8, background: "var(--teal)", color: "white", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700 }}
-          >
+          <button onClick={() => setNewOpen(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 18px", borderRadius: 8, background: "var(--teal)", color: "white", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
             <Plus size={15} /> Nuevo turno
           </button>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 260px", gap: 16 }}>
+      {/* Weekly view */}
+      {viewMode === "week" && <WeekView appts={isLive ? dbAppts : APPOINTMENTS as any} weekOffset={weekOffset} onWeekOffset={setWeekOffset} />}
+
+      <div style={{ display: viewMode === "week" ? "none" : "grid", gridTemplateColumns: "1fr 260px", gap: 16 }}>
         {/* Table */}
         <div style={{ background: "white", borderRadius: 14, border: "1px solid var(--slate-200)", overflow: "hidden" }}>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--slate-100)" }}>
